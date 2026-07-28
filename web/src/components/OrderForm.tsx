@@ -29,7 +29,7 @@ export function OrderForm({
   ftsoPrice: string | null;
   onSubmitted?: () => void;
 }) {
-  const { account, connect, getSigner } = useWallet();
+  const { account, connect, getSigner, ensureChain } = useWallet();
   const [direction, setDirection] = useState<Direction>("buy");
   const [orderType, setOrderType] = useState<"market" | "limit">("market");
   const [amount, setAmount] = useState("");
@@ -95,6 +95,11 @@ export function OrderForm({
   async function submit() {
     if (!account || !amountBase || !collateral) return;
     try {
+      if (!(await ensureChain(enclave.chainId))) {
+        setPhase("error");
+        setNote("Wrong network — approve the switch in your wallet, then try again.");
+        return;
+      }
       setPhase("encrypting");
       setNote("Sealing order to the enclave key…");
       const payload = encryptOrder(

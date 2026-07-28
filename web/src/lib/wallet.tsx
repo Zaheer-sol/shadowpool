@@ -51,6 +51,12 @@ interface WalletState {
   getSigner(): Promise<JsonRpcSigner>;
   /** Switch the wallet to a chain, registering it (correct symbol, RPC, explorer) if unknown. */
   switchChain(chainId: number): Promise<void>;
+  /**
+   * Hard guard for transactions: returns true only once the wallet is actually
+   * on `chainId`, prompting a switch if needed. Every write path calls this
+   * first so a transaction can never be sent on the wrong network.
+   */
+  ensureChain(chainId: number): Promise<boolean>;
 }
 
 /** Params for wallet_addEthereumChain, keyed by chain id. */
@@ -227,6 +233,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     [selected],
   );
 
+  const ensureChain = useCallback(
+    async (targetChainId: number) => {
+      const eth = selected?.provider;
+      if (!eth) return false;
+      const read = async () =>
+        Number(await eth.request({ method: "eth_chainId" }).catch(() => 0));
+      if ((await read()) === targetChainId) return true;
+      await switchChain(targetChainId);
+      const after = await read();
+      setChainId(after || null);
+      return after === targetChainId;
+    },
+    [selected, switchChain],
+  );
+
   const value = useMemo(
     () => ({
       account,
@@ -239,8 +260,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       provider: selected?.provider ?? null,
       getSigner,
       switchChain,
+      ensureChain,
     }),
-    [account, chainId, announced, pickerOpen, connect, disconnect, selected, getSigner, switchChain],
+    [account, chainId, announced, pickerOpen, connect, disconnect, selected, getSigner, switchChain, ensureChain],
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

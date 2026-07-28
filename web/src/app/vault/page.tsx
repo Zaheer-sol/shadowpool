@@ -20,7 +20,7 @@ interface TokenRow {
 export default function VaultPage() {
   const { data: enclave } = usePoll<EnclaveInfo>("/api/enclave", 8000);
   const { data: prices } = usePoll<PricesResponse>("/api/prices", 5000);
-  const { account, connect, provider: eip1193 } = useWallet();
+  const { account, connect, provider: eip1193, ensureChain } = useWallet();
   const [rows, setRows] = useState<TokenRow[]>([]);
   const [busy, setBusy] = useState<string>("");
   const [note, setNote] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -88,6 +88,9 @@ export default function VaultPage() {
       setBusy(label);
       setNote(null);
       try {
+        if (enclave && !(await ensureChain(enclave.chainId))) {
+          throw new Error("Wrong network — approve the switch in your wallet, then try again.");
+        }
         await fn();
         setNote({ kind: "ok", text: `${label} confirmed.` });
         setReload((n) => n + 1);
@@ -101,7 +104,7 @@ export default function VaultPage() {
         setBusy("");
       }
     },
-    [],
+    [enclave, ensureChain],
   );
 
   if (!enclave) {
