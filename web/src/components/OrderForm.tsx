@@ -304,14 +304,15 @@ function LockIcon() {
 /** Poll the trader's vault balance for one token via the wallet RPC. */
 function useVaultBalance(enclave: EnclaveInfo, account: string | null, token: string) {
   const key = `${account}-${token}`;
+  const { provider: eip1193 } = useWallet();
   const [data, setData] = useState<{ available: bigint; locked: bigint } | null>(null);
   useEffect(() => {
-    if (!account || !window.ethereum) {
+    if (!account || !eip1193) {
       setData(null);
       return;
     }
     let alive = true;
-    const provider = new BrowserProvider(window.ethereum as never);
+    const provider = new BrowserProvider(eip1193 as never);
     const vault = new Contract(enclave.contracts.vault, VAULT_ABI, provider);
     const load = async () => {
       try {
@@ -329,6 +330,6 @@ function useVaultBalance(enclave: EnclaveInfo, account: string | null, token: st
       clearInterval(id);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, enclave.contracts.vault]);
+  }, [key, enclave.contracts.vault, eip1193]);
   return { data };
 }

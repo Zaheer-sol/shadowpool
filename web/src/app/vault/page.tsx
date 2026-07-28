@@ -20,7 +20,7 @@ interface TokenRow {
 export default function VaultPage() {
   const { data: enclave } = usePoll<EnclaveInfo>("/api/enclave", 8000);
   const { data: prices } = usePoll<PricesResponse>("/api/prices", 5000);
-  const { account, connect } = useWallet();
+  const { account, connect, provider: eip1193 } = useWallet();
   const [rows, setRows] = useState<TokenRow[]>([]);
   const [busy, setBusy] = useState<string>("");
   const [note, setNote] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -38,12 +38,12 @@ export default function VaultPage() {
   );
 
   useEffect(() => {
-    if (!enclave || !account || !window.ethereum) {
+    if (!enclave || !account || !eip1193) {
       setRows([]);
       return;
     }
     let alive = true;
-    const provider = new BrowserProvider(window.ethereum as never);
+    const provider = new BrowserProvider(eip1193 as never);
     const vault = new Contract(enclave.contracts.vault, VAULT_ABI, provider);
     const load = async () => {
       try {
@@ -67,7 +67,7 @@ export default function VaultPage() {
       alive = false;
       clearInterval(id);
     };
-  }, [enclave, account, tokens, reload]);
+  }, [enclave, account, tokens, reload, eip1193]);
 
   const portfolioUsd = useMemo(() => {
     if (!rows.length) return null;
@@ -181,7 +181,7 @@ export default function VaultPage() {
               busy={busy}
               onSubmit={(token, amount) =>
                 run("Deposit", async () => {
-                  const provider = new BrowserProvider(window.ethereum as never);
+                  const provider = new BrowserProvider(eip1193 as never);
                   const signer = await provider.getSigner();
                   const erc20 = new Contract(token.address, ERC20_ABI, signer);
                   const allowance: bigint = await erc20.allowance(account, enclave.contracts.vault);
@@ -203,7 +203,7 @@ export default function VaultPage() {
               busy={busy}
               onSubmit={(token, amount) =>
                 run("Withdraw", async () => {
-                  const provider = new BrowserProvider(window.ethereum as never);
+                  const provider = new BrowserProvider(eip1193 as never);
                   const signer = await provider.getSigner();
                   const vault = new Contract(enclave.contracts.vault, VAULT_ABI, signer);
                   const tx = await vault.withdraw(token.address, amount);
@@ -228,7 +228,7 @@ export default function VaultPage() {
                   disabled={!!busy}
                   onClick={() =>
                     run(`Mint ${t.symbol}`, async () => {
-                      const provider = new BrowserProvider(window.ethereum as never);
+                      const provider = new BrowserProvider(eip1193 as never);
                       const signer = await provider.getSigner();
                       const erc20 = new Contract(t.address, ERC20_ABI, signer);
                       const amount = parseUnits(t.symbol === "USDC" ? "100000" : "50000", t.decimals);
