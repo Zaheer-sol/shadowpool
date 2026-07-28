@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePoll } from "@/lib/api";
 import { chainName } from "@/lib/format";
+import { useWallet } from "@/lib/wallet";
 import type { EnclaveInfo } from "@/lib/types";
 import { ConnectButton } from "./ConnectButton";
 
@@ -19,9 +20,24 @@ const LINKS = [
 export function Nav() {
   const pathname = usePathname();
   const { data: enclave, offline } = usePoll<EnclaveInfo>("/api/enclave", 6000);
+  const { account, chainId, switchChain } = useWallet();
+  const wrongNetwork = !!account && !!enclave && chainId !== null && chainId !== enclave.chainId;
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur">
+      {wrongNetwork && (
+        <div className="flex items-center justify-center gap-3 border-b border-warn/30 bg-warn/10 px-4 py-2 text-[12px] text-warn">
+          <span>
+            ⚠ Your wallet is on {chainName(chainId)}, but ShadowPool is deployed on {chainName(enclave.chainId)}.
+          </span>
+          <button
+            onClick={() => void switchChain(enclave.chainId)}
+            className="rounded-md border border-warn/50 px-2.5 py-1 font-medium transition-colors hover:bg-warn/20"
+          >
+            Switch to {chainName(enclave.chainId)}
+          </button>
+        </div>
+      )}
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5">
           {/* Two offset circles: the visible market and the dark pool behind it. */}

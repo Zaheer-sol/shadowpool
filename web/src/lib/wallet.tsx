@@ -49,7 +49,27 @@ interface WalletState {
   /** The chosen wallet's raw EIP-1193 provider — use for reads. */
   provider: Eip1193 | null;
   getSigner(): Promise<JsonRpcSigner>;
+  /** Switch the wallet to a chain, registering it (correct symbol, RPC, explorer) if unknown. */
+  switchChain(chainId: number): Promise<void>;
 }
+
+/** Params for wallet_addEthereumChain, keyed by chain id. */
+const CHAIN_PARAMS: Record<number, object> = {
+  114: {
+    chainId: "0x72",
+    chainName: "Flare Testnet Coston2",
+    nativeCurrency: { name: "Coston2 Flare", symbol: "C2FLR", decimals: 18 },
+    rpcUrls: ["https://coston2-api.flare.network/ext/C/rpc"],
+    blockExplorerUrls: ["https://coston2-explorer.flare.network"],
+  },
+  14: {
+    chainId: "0xe",
+    chainName: "Flare Mainnet",
+    nativeCurrency: { name: "Flare", symbol: "FLR", decimals: 18 },
+    rpcUrls: ["https://flare-api.flare.network/ext/C/rpc"],
+    blockExplorerUrls: ["https://flare-explorer.flare.network"],
+  },
+};
 
 const WalletContext = createContext<WalletState | null>(null);
 const LAST_WALLET_KEY = "shadowpool.lastWallet";
@@ -183,6 +203,30 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     return new BrowserProvider(selected.provider as never).getSigner();
   }, [selected]);
 
+  const switchChain = useCallback(
+    async (targetChainId: number) => {
+      const eth = selected?.provider;
+      if (!eth) return;
+      const hexId = `0x${targetChainId.toString(16)}`;
+      try {
+        await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hexId }] });
+      } catch (err) {
+        // 4902: the wallet doesn't know this chain — register it with the
+        // proper native-currency symbol so gas doesn't display as "ETH".
+        const code = (err as { code?: number }).code;
+        const params = CHAIN_PARAMS[targetChainId];
+        if (code === 4902 && params) {
+          try {
+            await eth.request({ method: "wallet_addEthereumChain", params: [params] });
+          } catch { /* user declined */ }
+        } else if (code !== 4001) {
+          console.warn("switchChain failed:", err);
+        }
+      }
+    },
+    [selected],
+  );
+
   const value = useMemo(
     () => ({
       account,
@@ -194,8 +238,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       disconnect,
       provider: selected?.provider ?? null,
       getSigner,
+      switchChain,
     }),
-    [account, chainId, announced, pickerOpen, connect, disconnect, selected, getSigner],
+    [account, chainId, announced, pickerOpen, connect, disconnect, selected, getSigner, switchChain],
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
