@@ -58,7 +58,14 @@ async function main() {
   const enclave = (await (await fetch(`${API_URL}/api/enclave`)).json()) as {
     boxPublicKey: string;
   };
-  console.log(`chain ${chainId}, enclave key ${enclave.boxPublicKey.slice(0, 18)}…`);
+
+  // Anchor the demo to the live FTSO price so it works on any network.
+  const prices = (await (await fetch(`${API_URL}/api/prices`)).json()) as {
+    "FXRP/USDC": { latest: string | null };
+  };
+  const ftso = BigInt(prices["FXRP/USDC"].latest ?? "0");
+  if (ftso === 0n) throw new Error("no FTSO price yet — let the node run a few seconds");
+  console.log(`chain ${chainId}, enclave key ${enclave.boxPublicKey.slice(0, 18)}…, FTSO ${Number(ftso) / 1e18}`);
 
   const sellerWallet = new Wallet(SELLER_KEY, provider);
   const buyerWallet = new Wallet(BUYER_KEY, provider);
@@ -67,7 +74,9 @@ async function main() {
   const pairHash = keccak256(toUtf8Bytes("FXRP/USDC"));
 
   const fxrpAmount = parseUnits("10000", 18);
-  const usdcAmount = parseUnits("31000", 6);
+  // Buyer collateral: 5% above FTSO notional. Seller limit: 2% under FTSO.
+  const usdcAmount = (fxrpAmount * ftso * 105n * 10n ** 6n) / (100n * 10n ** 36n);
+  const sellLimit = (ftso * 98n) / 100n;
 
   // Fund + deposit both traders.
   for (const [who, wallet, token, amount] of [
@@ -90,7 +99,7 @@ async function main() {
       direction: "sell",
       pair: "FXRP/USDC",
       amount: fxrpAmount.toString(),
-      limitPrice: parseUnits("2.95", 18).toString(),
+      limitPrice: sellLimit.toString(),
       expiry,
       trader: seller.address,
     },
