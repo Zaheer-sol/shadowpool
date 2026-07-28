@@ -27,9 +27,14 @@ Vault balances ◀── SettlementEngine.sol ◀──signed settlement instruc
 
 ## What's private vs. public
 
-Private (enclave only): order direction, size, price, trader-per-order, the resting book.
-Public (on-chain): vault deposits/withdrawals, settled transfers, total volume, attestation
-signatures, contract addresses.
+Private (enclave only): limit prices (never revealed, even after a fill), the resting order
+book, whether/when an order will match, contents of orders that never match.
+Public (on-chain): vault deposits/withdrawals; that you posted an order plus the collateral
+you locked (token implies direction, amount bounds size — the UI's *privacy padding* over-locks
+collateral so observers see only an upper bound, refunded automatically on fill/cancel); and
+each settlement's matched pair, price, and amounts — like post-trade prints in traditional
+dark pools. The property that defeats front-running holds throughout: nobody can read your
+price or the book.
 
 ## Trust model in one paragraph
 

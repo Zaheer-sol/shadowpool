@@ -35,6 +35,7 @@ export function OrderForm({
   const [amount, setAmount] = useState("");
   const [limitPrice, setLimitPrice] = useState("");
   const [expiry, setExpiry] = useState(EXPIRIES[2].secs);
+  const [padPct, setPadPct] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [note, setNote] = useState<string>("");
 
@@ -64,15 +65,25 @@ export function OrderForm({
     }
   }, [amount, pair.baseDecimals]);
 
-  /** Collateral to lock: base for sells; quote (with 1% market buffer) for buys. */
+  /**
+   * Collateral to lock: base for sells; quote (with 1% market buffer) for buys.
+   * Privacy padding over-locks beyond what the order needs, so the public
+   * collateral amount is only an upper bound on the real size. Unused
+   * collateral unlocks automatically when the order fills or is cancelled.
+   */
   const collateral = useMemo(() => {
     if (!amountBase || !price18) return null;
-    if (direction === "sell") return amountBase;
-    const quoteScale = 10n ** BigInt(pair.quoteDecimals);
-    const baseScale = 10n ** BigInt(pair.baseDecimals);
-    const exact = (amountBase * price18 * quoteScale) / (10n ** 18n * baseScale);
-    return orderType === "market" ? (exact * 101n) / 100n : exact;
-  }, [amountBase, price18, direction, orderType, pair]);
+    let exact: bigint;
+    if (direction === "sell") {
+      exact = amountBase;
+    } else {
+      const quoteScale = 10n ** BigInt(pair.quoteDecimals);
+      const baseScale = 10n ** BigInt(pair.baseDecimals);
+      exact = (amountBase * price18 * quoteScale) / (10n ** 18n * baseScale);
+      if (orderType === "market") exact = (exact * 101n) / 100n;
+    }
+    return (exact * BigInt(100 + padPct)) / 100n;
+  }, [amountBase, price18, direction, orderType, pair, padPct]);
 
   const insufficient =
     collateral !== null && balances !== null && collateral > balances.available;
@@ -238,6 +249,29 @@ export function OrderForm({
           </div>
         </label>
 
+        {/* Privacy padding */}
+        <label className="block">
+          <div className="mb-1.5 flex items-baseline justify-between text-[12px] text-ink-3">
+            <span>Privacy padding</span>
+            <span>blurs your size on-chain</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[0, 10, 25, 50].map((p) => (
+              <button
+                key={p}
+                onClick={() => setPadPct(p)}
+                className={`rounded-md border py-1.5 text-[12px] transition-colors ${
+                  padPct === p
+                    ? "border-line-2 bg-surface-2 text-ink"
+                    : "border-line text-ink-3 hover:text-ink-2"
+                }`}
+              >
+                {p === 0 ? "None" : `+${p}%`}
+              </button>
+            ))}
+          </div>
+        </label>
+
         {/* Summary */}
         <div className="rounded-md border border-line bg-surface-2 px-4 py-3 text-[12px] leading-5 text-ink-2">
           {amountBase && price18 && collateral ? (
@@ -247,7 +281,8 @@ export function OrderForm({
               {orderType === "market" ? "FTSO market price" : <span className="num">{fmtPrice(price18)}</span>}.
               Locks <span className="num">{fmtAmount(collateral, collateralDecimals)}</span>{" "}
               {direction === "sell" ? base : quote} in the vault
-              {orderType === "market" && direction === "buy" && " (incl. 1% price buffer)"}.
+              {orderType === "market" && direction === "buy" && " (incl. 1% price buffer)"}
+              {padPct > 0 && ` — padded +${padPct}%, so observers see only an upper bound; the unused part unlocks when the order completes`}.
               {insufficient && (
                 <span className="mt-1 block text-warn">⚠ Insufficient vault balance — deposit first.</span>
               )}
@@ -285,7 +320,8 @@ export function OrderForm({
         )}
 
         <p className="flex items-center gap-2 border-t border-line pt-3 text-[11px] text-ink-3">
-          <LockIcon /> Order details are encrypted in your browser. On-chain observers see only a ciphertext blob.
+          <LockIcon /> Your price and terms are encrypted in your browser — on-chain there is only a
+          ciphertext blob plus the collateral you lock. Use padding to blur what the collateral implies.
         </p>
       </div>
     </div>

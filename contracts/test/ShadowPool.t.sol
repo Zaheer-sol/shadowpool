@@ -164,6 +164,22 @@ contract ShadowPoolTest is Test {
         assertEq(uint8(book.getOrder(sellId).status), uint8(OrderBook.OrderStatus.Filled));
     }
 
+    function test_OverlockedCollateralRefundedOnFill() public {
+        // Privacy padding: seller locks 15,000 FXRP behind a 10,000 order so
+        // observers only learn an upper bound. The unused 5,000 must unlock
+        // the moment the order is fully filled.
+        bytes32 sellId = _submit(seller, address(fxrp), 15_000e18);
+        bytes32 buyId = _submit(buyer, address(usdc), 30_000e6);
+
+        SettlementEngine.SettlementInstruction memory ix =
+            _instruction(buyId, sellId, 10_000e18, 30_000e6, XRP_PRICE);
+        engine.settle(ix, _sign(ix));
+
+        assertEq(vault.getLockedBalance(seller, address(fxrp)), 0);
+        assertEq(vault.getBalance(seller, address(fxrp)), 90_000e18); // 100k - 10k sold
+        assertEq(uint8(book.getOrder(sellId).status), uint8(OrderBook.OrderStatus.Filled));
+    }
+
     function test_PartialFillKeepsOrderActive() public {
         bytes32 sellId = _submit(seller, address(fxrp), 10_000e18);
         bytes32 buyId = _submit(buyer, address(usdc), 30_000e6);

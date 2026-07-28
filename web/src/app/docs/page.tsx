@@ -5,7 +5,7 @@ export const metadata = { title: "Docs — ShadowPool" };
 const FAQ: { q: string; a: string }[] = [
   {
     q: "Is my order really private?",
-    a: "Your browser encrypts the order with the enclave's public key before anything touches the chain. On-chain there is only ciphertext plus the collateral you locked. Only code running inside the attested enclave holds the decryption key. The one unavoidable public signal is the settlement itself — once a trade fills, the transfer amounts are visible, but not who ordered what, when, or at what limit.",
+    a: "Your price and terms are — your browser encrypts them to the enclave's key before anything touches the chain, and they are never revealed, even after a fill. Two things are public by design: the collateral you lock at submission (its token hints at direction, its amount bounds your size — use privacy padding to blur this), and the settlement itself once a trade fills. What matters for front-running is that nobody can read your price or see the resting book, and that stays sealed.",
   },
   {
     q: "How does matching work?",
