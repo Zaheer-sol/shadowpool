@@ -5,11 +5,11 @@ import { chainName, explorerAddr, shortAddr } from "@/lib/format";
 import type { EnclaveInfo } from "@/lib/types";
 
 const PRIVATE_PUBLIC: [string, string][] = [
-  ["Order direction (buy/sell)", "Vault deposits and withdrawals"],
-  ["Order size and price", "Settlement transfers (matched trades)"],
-  ["Trader identity per order", "Total protocol volume"],
-  ["Unfilled and pending orders", "TEE attestation signatures"],
-  ["Full order-book state", "Contract addresses"],
+  ["Limit prices — never revealed, even after a fill", "Vault deposits and withdrawals"],
+  ["The resting order book (who is bidding what)", "That you posted an order, and the collateral you locked"],
+  ["Whether and when an order will match", "Settlement: matched pair, execution price, amounts"],
+  ["Contents of orders that never match", "Total protocol volume"],
+  ["Market-vs-limit, expiry, order strategy", "Enclave attestation signatures, contract addresses"],
 ];
 
 export default function SecurityPage() {
@@ -63,6 +63,15 @@ export default function SecurityPage() {
       </Section>
 
       <Section title="2 · What's private vs. public">
+        <p className="mb-3">
+          Honest accounting: the collateral you lock at submission is public, and for this pair
+          the collateral token implies direction (locking FXRP ≈ selling, USDC ≈ buying) while
+          its amount bounds your size. The order form&apos;s <em>privacy padding</em> lets you
+          over-lock so observers see only an upper bound. What can never be read is your price
+          and the state of the book — which is what front-running actually requires. Once a
+          trade settles, the fill itself is public, exactly like post-trade prints in
+          traditional dark pools.
+        </p>
         <div className="overflow-hidden rounded-md border border-line">
           <table className="w-full text-[13px]">
             <thead>

@@ -15,12 +15,12 @@ const STEPS = [
   {
     n: "02",
     title: "Encrypt",
-    body: "Your order — side, size, price — is sealed in your browser to the enclave's key. On-chain it is an unreadable blob.",
+    body: "Your order's price and terms are sealed in your browser to the enclave's key. On-chain: an unreadable blob and your locked collateral.",
   },
   {
     n: "03",
     title: "Match in the dark",
-    body: "Inside a Flare Confidential Compute TEE, the matching engine crosses orders against FTSO reference prices.",
+    body: "Inside the matching enclave — built for Flare Confidential Compute — orders cross against FTSO reference prices.",
   },
   {
     n: "04",
@@ -31,8 +31,8 @@ const STEPS = [
 
 const FEATURES = [
   {
-    title: "Private orders",
-    body: "Order direction, size, price, and your identity per order never leave the hardware enclave. Node operators included.",
+    title: "No front-running",
+    body: "Your limit price and the resting order book never leave the enclave — nobody can trade ahead of an order they can't read.",
   },
   {
     title: "Fair matching",
@@ -68,7 +68,8 @@ export default function Landing() {
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-[15px] leading-7 text-ink-2">
             On a transparent chain, a large order is a signal everyone else trades against. ShadowPool
-            matches FAsset orders inside a hardware enclave — encrypted until the moment they settle.
+            matches FAsset orders inside a sealed enclave built for Flare Confidential Compute —
+            prices encrypted until the moment they settle.
           </p>
           <div className="mt-9 flex items-center justify-center gap-3">
             <Link
