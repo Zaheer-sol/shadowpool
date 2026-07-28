@@ -16,19 +16,19 @@ interface OrderRow extends LocalOrder {
 
 export default function OrdersPage() {
   const { data: enclave } = usePoll<EnclaveInfo>("/api/enclave", 8000);
-  const { account, connect } = useWallet();
+  const { account, connect, provider: eip1193 } = useWallet();
   const [rows, setRows] = useState<OrderRow[]>([]);
   const [busy, setBusy] = useState("");
   const [note, setNote] = useState("");
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
-    if (!enclave || !account || !window.ethereum) {
+    if (!enclave || !account || !eip1193) {
       setRows([]);
       return;
     }
     let alive = true;
-    const provider = new BrowserProvider(window.ethereum as never);
+    const provider = new BrowserProvider(eip1193 as never);
     const book = new Contract(enclave.contracts.orderBook, ORDERBOOK_ABI, provider);
     const load = async () => {
       const local = loadOrders(account).reverse();
@@ -58,7 +58,7 @@ export default function OrdersPage() {
       alive = false;
       clearInterval(id);
     };
-  }, [enclave, account, reload]);
+  }, [enclave, account, reload, eip1193]);
 
   const cancel = useCallback(
     async (orderId: string) => {
@@ -66,7 +66,7 @@ export default function OrdersPage() {
       setBusy(orderId);
       setNote("");
       try {
-        const provider = new BrowserProvider(window.ethereum as never);
+        const provider = new BrowserProvider(eip1193 as never);
         const signer = await provider.getSigner();
         const book = new Contract(enclave.contracts.orderBook, ORDERBOOK_ABI, signer);
         const tx = await book.cancelOrder(orderId);

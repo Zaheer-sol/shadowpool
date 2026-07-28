@@ -1,15 +1,32 @@
 "use client";
 
 /**
- * Thin MetaMask wallet context over ethers v6 — account, chain, signer access.
+ * Wallet context with EIP-6963 multi-wallet discovery.
+ *
+ * With several wallet extensions installed, `window.ethereum` is a battleground
+ * — wallets overwrite each other or stop injecting entirely. EIP-6963 fixes
+ * this: every wallet announces itself with an event, we list them all, and the
+ * user picks one. `window.ethereum` remains as a legacy fallback.
  */
 import { BrowserProvider, JsonRpcSigner } from "ethers";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
-interface Eip1193 {
+export interface Eip1193 {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
   on?(event: string, cb: (...args: unknown[]) => void): void;
   removeListener?(event: string, cb: (...args: unknown[]) => void): void;
+  providers?: Eip1193[]; // some legacy multi-wallet shims expose this
+}
+
+export interface WalletOption {
+  uuid: string;
+  name: string;
+  icon: string; // data: URI per EIP-6963
+}
+
+interface Announced {
+  info: WalletOption;
+  provider: Eip1193;
 }
 
 declare global {
@@ -21,35 +38,91 @@ declare global {
 interface WalletState {
   account: string | null;
   chainId: number | null;
-  hasWallet: boolean;
-  connect(): Promise<void>;
+  /** Wallets discovered via EIP-6963 (plus a legacy entry if only window.ethereum exists). */
+  wallets: WalletOption[];
+  /** True while the picker should be shown (connect() found several wallets). */
+  pickerOpen: boolean;
+  closePicker(): void;
+  /** No uuid: connect the only/last-used wallet, or open the picker. */
+  connect(uuid?: string): Promise<void>;
+  disconnect(): void;
+  /** The chosen wallet's raw EIP-1193 provider — use for reads. */
+  provider: Eip1193 | null;
   getSigner(): Promise<JsonRpcSigner>;
 }
 
 const WalletContext = createContext<WalletState | null>(null);
+const LAST_WALLET_KEY = "shadowpool.lastWallet";
+const LEGACY_UUID = "legacy-window-ethereum";
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
+  const [announced, setAnnounced] = useState<Announced[]>([]);
+  const [selected, setSelected] = useState<Announced | null>(null);
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
-  const [hasWallet, setHasWallet] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const announcedRef = useRef<Announced[]>([]);
 
+  // --- discovery ---
   useEffect(() => {
-    const eth = window.ethereum;
-    if (!eth) return;
-    setHasWallet(true);
+    const onAnnounce = (event: Event) => {
+      const detail = (event as CustomEvent<Announced>).detail;
+      if (!detail?.info?.uuid) return;
+      setAnnounced((prev) => {
+        if (prev.some((a) => a.info.uuid === detail.info.uuid)) return prev;
+        const next = [...prev, detail];
+        announcedRef.current = next;
+        return next;
+      });
+    };
+    window.addEventListener("eip6963:announceProvider", onAnnounce);
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
 
-    eth
+    // Legacy fallback: only if nothing announces itself shortly after load.
+    const legacyTimer = setTimeout(() => {
+      if (announcedRef.current.length === 0 && window.ethereum) {
+        const eth = window.ethereum.providers?.[0] ?? window.ethereum;
+        const legacy: Announced = {
+          info: { uuid: LEGACY_UUID, name: "Browser wallet", icon: "" },
+          provider: eth,
+        };
+        announcedRef.current = [legacy];
+        setAnnounced([legacy]);
+      }
+    }, 400);
+
+    return () => {
+      window.removeEventListener("eip6963:announceProvider", onAnnounce);
+      clearTimeout(legacyTimer);
+    };
+  }, []);
+
+  // --- silent reconnect to the last-used wallet ---
+  useEffect(() => {
+    if (selected || announced.length === 0) return;
+    const lastUuid = localStorage.getItem(LAST_WALLET_KEY);
+    const match = announced.find((a) => a.info.uuid === lastUuid);
+    if (!match) return;
+    match.provider
       .request({ method: "eth_accounts" })
       .then((accs) => {
         const list = accs as string[];
-        if (list.length > 0) setAccount(list[0]);
+        if (list.length > 0) {
+          setSelected(match);
+          setAccount(list[0]);
+          match.provider
+            .request({ method: "eth_chainId" })
+            .then((id) => setChainId(Number(id)))
+            .catch(() => {});
+        }
       })
       .catch(() => {});
-    eth
-      .request({ method: "eth_chainId" })
-      .then((id) => setChainId(Number(id)))
-      .catch(() => {});
+  }, [announced, selected]);
 
+  // --- react to account/chain switches on the chosen wallet ---
+  useEffect(() => {
+    const eth = selected?.provider;
+    if (!eth) return;
     const onAccounts = (...args: unknown[]) => {
       const list = args[0] as string[];
       setAccount(list[0] ?? null);
@@ -61,34 +134,68 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       eth.removeListener?.("accountsChanged", onAccounts);
       eth.removeListener?.("chainChanged", onChain);
     };
+  }, [selected]);
+
+  const connectTo = useCallback(async (target: Announced) => {
+    try {
+      const accs = (await target.provider.request({ method: "eth_requestAccounts" })) as string[];
+      setSelected(target);
+      setAccount(accs[0] ?? null);
+      setChainId(Number(await target.provider.request({ method: "eth_chainId" })));
+      localStorage.setItem(LAST_WALLET_KEY, target.info.uuid);
+      setPickerOpen(false);
+    } catch (err) {
+      const code = (err as { code?: number }).code;
+      if (code !== 4001) console.warn(`connect to ${target.info.name} failed:`, err);
+    }
   }, []);
 
-  const connect = useCallback(async () => {
-    const eth = window.ethereum;
-    if (!eth) {
-      window.open("https://metamask.io/download/", "_blank");
-      return;
-    }
-    try {
-      const accs = (await eth.request({ method: "eth_requestAccounts" })) as string[];
-      setAccount(accs[0] ?? null);
-      setChainId(Number(await eth.request({ method: "eth_chainId" })));
-    } catch (err) {
-      // User dismissed the MetaMask popup (code 4001) or the wallet errored —
-      // either way, staying disconnected is the correct outcome; don't throw.
-      const code = (err as { code?: number }).code;
-      if (code !== 4001) console.warn("wallet connect failed:", err);
-    }
+  const connect = useCallback(
+    async (uuid?: string) => {
+      const list = announcedRef.current;
+      if (list.length === 0) {
+        window.open("https://metamask.io/download/", "_blank");
+        return;
+      }
+      const target = uuid
+        ? list.find((a) => a.info.uuid === uuid)
+        : list.length === 1
+          ? list[0]
+          : list.find((a) => a.info.uuid === localStorage.getItem(LAST_WALLET_KEY));
+      if (!target) {
+        setPickerOpen(true); // several wallets, no memory of a choice — ask
+        return;
+      }
+      await connectTo(target);
+    },
+    [connectTo],
+  );
+
+  const disconnect = useCallback(() => {
+    setSelected(null);
+    setAccount(null);
+    setChainId(null);
+    localStorage.removeItem(LAST_WALLET_KEY);
   }, []);
 
   const getSigner = useCallback(async () => {
-    if (!window.ethereum) throw new Error("No wallet");
-    return new BrowserProvider(window.ethereum as never).getSigner();
-  }, []);
+    if (!selected) throw new Error("No wallet connected");
+    return new BrowserProvider(selected.provider as never).getSigner();
+  }, [selected]);
 
   const value = useMemo(
-    () => ({ account, chainId, hasWallet, connect, getSigner }),
-    [account, chainId, hasWallet, connect, getSigner],
+    () => ({
+      account,
+      chainId,
+      wallets: announced.map((a) => a.info),
+      pickerOpen,
+      closePicker: () => setPickerOpen(false),
+      connect,
+      disconnect,
+      provider: selected?.provider ?? null,
+      getSigner,
+    }),
+    [account, chainId, announced, pickerOpen, connect, disconnect, selected, getSigner],
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
