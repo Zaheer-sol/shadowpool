@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePoll } from "@/lib/api";
@@ -22,6 +23,16 @@ export function Nav() {
   const { data: enclave, offline } = usePoll<EnclaveInfo>("/api/enclave", 6000);
   const { account, chainId, switchChain } = useWallet();
   const wrongNetwork = !!account && !!enclave && chainId !== null && chainId !== enclave.chainId;
+
+  // On first connect to the wrong network, immediately offer the switch —
+  // the app should start on the deployment chain like any well-behaved dapp.
+  const prompted = useRef(false);
+  useEffect(() => {
+    if (wrongNetwork && !prompted.current && enclave) {
+      prompted.current = true;
+      void switchChain(enclave.chainId);
+    }
+  }, [wrongNetwork, enclave, switchChain]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur">

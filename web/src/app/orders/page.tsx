@@ -16,7 +16,7 @@ interface OrderRow extends LocalOrder {
 
 export default function OrdersPage() {
   const { data: enclave } = usePoll<EnclaveInfo>("/api/enclave", 8000);
-  const { account, connect, provider: eip1193 } = useWallet();
+  const { account, connect, provider: eip1193, ensureChain } = useWallet();
   const [rows, setRows] = useState<OrderRow[]>([]);
   const [busy, setBusy] = useState("");
   const [note, setNote] = useState("");
@@ -66,6 +66,9 @@ export default function OrdersPage() {
       setBusy(orderId);
       setNote("");
       try {
+        if (!(await ensureChain(enclave.chainId))) {
+          throw new Error("Wrong network — approve the switch in your wallet, then try again.");
+        }
         const provider = new BrowserProvider(eip1193 as never);
         const signer = await provider.getSigner();
         const book = new Contract(enclave.contracts.orderBook, ORDERBOOK_ABI, signer);
@@ -80,7 +83,7 @@ export default function OrdersPage() {
         setBusy("");
       }
     },
-    [enclave],
+    [enclave, eip1193, ensureChain],
   );
 
   const active = rows.filter((r) => r.status === "Active");
