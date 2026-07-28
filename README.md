@@ -2,6 +2,8 @@
 
 **Track 2: Confidential Compute Applications · Flare Summer Signal Hackathon**
 
+Repo: https://github.com/0x-kayser/shadowpool · Demo recording script: [DEMO.md](DEMO.md)
+
 On a transparent chain, a large order is a signal everyone trades against. ShadowPool is a
 private trading venue for FAssets (FXRP/USDC): orders are encrypted in the trader's browser,
 matched inside a (TEE-ready) enclave against FTSO reference prices, and settled on-chain
@@ -66,13 +68,14 @@ MetaMask: add network `http://127.0.0.1:8545`, chain id 31337, then use the Vaul
 ## Deploy to Coston2
 
 ```bash
-cd services && pnpm start &                          # prints the enclave signer address
-export PRIVATE_KEY=<funded coston2 key>
-export TEE_SIGNER=<enclave signer printed above>
-cd contracts && forge script script/Deploy.s.sol --rpc-url coston2 --broadcast
-# restart the node with RPC_URL=https://coston2-api.flare.network/ext/C/rpc RELAY_KEY=$PRIVATE_KEY
+# fund the deployer in contracts/.env with C2FLR: https://faucet.flare.network
+cd contracts && ./deploy-coston2.sh
+# then: restart the node with RPC_URL=https://coston2-api.flare.network/ext/C/rpc RELAY_KEY=$PRIVATE_KEY
 # frontend: NEXT_PUBLIC_API_URL=<node url> pnpm build
 ```
+
+The script checks the faucet balance, reads the enclave signer from the node's key file,
+deploys all contracts + test tokens, and writes `deployments/114.json` for the node/frontend.
 
 On Coston2 the `PriceOracle` reads real FTSO feeds through the `FlareContractRegistry`
 (`0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019`); locally it uses an owner-set fallback price.
