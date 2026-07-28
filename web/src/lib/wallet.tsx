@@ -38,11 +38,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     if (!eth) return;
     setHasWallet(true);
 
-    void eth.request({ method: "eth_accounts" }).then((accs) => {
-      const list = accs as string[];
-      if (list.length > 0) setAccount(list[0]);
-    });
-    void eth.request({ method: "eth_chainId" }).then((id) => setChainId(Number(id)));
+    eth
+      .request({ method: "eth_accounts" })
+      .then((accs) => {
+        const list = accs as string[];
+        if (list.length > 0) setAccount(list[0]);
+      })
+      .catch(() => {});
+    eth
+      .request({ method: "eth_chainId" })
+      .then((id) => setChainId(Number(id)))
+      .catch(() => {});
 
     const onAccounts = (...args: unknown[]) => {
       const list = args[0] as string[];
@@ -63,9 +69,16 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       window.open("https://metamask.io/download/", "_blank");
       return;
     }
-    const accs = (await eth.request({ method: "eth_requestAccounts" })) as string[];
-    setAccount(accs[0] ?? null);
-    setChainId(Number(await eth.request({ method: "eth_chainId" })));
+    try {
+      const accs = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+      setAccount(accs[0] ?? null);
+      setChainId(Number(await eth.request({ method: "eth_chainId" })));
+    } catch (err) {
+      // User dismissed the MetaMask popup (code 4001) or the wallet errored —
+      // either way, staying disconnected is the correct outcome; don't throw.
+      const code = (err as { code?: number }).code;
+      if (code !== 4001) console.warn("wallet connect failed:", err);
+    }
   }, []);
 
   const getSigner = useCallback(async () => {
