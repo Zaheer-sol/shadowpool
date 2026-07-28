@@ -77,6 +77,20 @@ cd contracts && ./deploy-coston2.sh
 The script checks the faucet balance, reads the enclave signer from the node's key file,
 deploys all contracts + test tokens, and writes `deployments/114.json` for the node/frontend.
 
+### Live Coston2 deployment
+
+| Contract | Address |
+|---|---|
+| ShadowVault | [`0x62273F162ddCdEB69311A4b87D69Eb3eDD34af18`](https://coston2-explorer.flare.network/address/0x62273F162ddCdEB69311A4b87D69Eb3eDD34af18) |
+| OrderBook | [`0x70ff8f4DA28B2c13C0614539e701a6Bc3e8b5dA5`](https://coston2-explorer.flare.network/address/0x70ff8f4DA28B2c13C0614539e701a6Bc3e8b5dA5) |
+| SettlementEngine | [`0x3A552EB014a19ED2F09121F472431fB0910DFaaa`](https://coston2-explorer.flare.network/address/0x3A552EB014a19ED2F09121F472431fB0910DFaaa) |
+| PriceOracle (FtsoV2) | [`0x7cE817e8E51108d57B31E3e9061DAB9F4E542840`](https://coston2-explorer.flare.network/address/0x7cE817e8E51108d57B31E3e9061DAB9F4E542840) |
+| FXRP (test) | `0xd062F2Dd4984727f1129cCdEcDD0798CE9CDc15a` |
+| USDC (test) | `0x4C6549249c26Dee1AeE57fF22ac1457EC4BA2b51` |
+
+First settled trade (encrypted orders → TEE match at 99% of live FTSO → on-chain verification):
+[`0x62263f…6028`](https://coston2-explorer.flare.network/tx/0x62263f12cfa841542d860c0a8dcd6b27b6ee47003d1ea5f5d6837a30ba7f6028)
+
 On Coston2 the `PriceOracle` reads real FTSO feeds through the `FlareContractRegistry`
 (`0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019`); locally it uses an owner-set fallback price.
 
