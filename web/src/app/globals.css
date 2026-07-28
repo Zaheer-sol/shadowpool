@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/*
+ * ShadowPool design tokens.
+ * A dark venue: near-black blue-tinted surfaces, hairline borders, one teal
+ * accent, tabular monospace numerals. Buy/sell greens and reds are status
+ * colors and always ship with a label or arrow — never color alone.
+ */
+@theme {
+  --color-bg: #0a0c10;
+  --color-surface: #11141a;
+  --color-surface-2: #161a22;
+  --color-raised: #1c212b;
+  --color-line: #232935;
+  --color-line-2: #2e3644;
+
+  --color-ink: #e8ebf1;
+  --color-ink-2: #9aa4b5;
+  --color-ink-3: #5f6a7d;
+
+  --color-accent: #2cbfae;
+  --color-accent-dim: #1c8478;
+  --color-buy: #3fce8e;
+  --color-sell: #e5484d;
+  --color-warn: #d08700;
+
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", monospace;
+}
+
+html {
+  background: var(--color-bg);
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numerals in tables, prices, addresses. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Hairline panel — the basic building block of every page. */
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--color-line);
+}
+
+/* Faint dotted grid backdrop for hero sections — texture without gradient soup. */
+.grid-field {
+  background-image: radial-gradient(var(--color-line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 75% 90% at 50% 20%, black 30%, transparent 75%);
+}
+
+/* Subtle pulse for the enclave status dot. */
+@keyframes enclave-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(44 191 174 / 0.45); }
+  55% { box-shadow: 0 0 0 5px rgb(44 191 174 / 0); }
+}
+.enclave-dot {
+  animation: enclave-pulse 2.4s ease-out infinite;
+}
+
+/* Numeric inputs without spinners. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+::selection {
+  background: rgb(44 191 174 / 0.28);
+}

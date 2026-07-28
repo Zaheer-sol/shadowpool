@@ -1,0 +1,15 @@
+node_modules/
+.next/
+dist/
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# node runtime state (enclave keys, trade log, logs)
+services/.data/
+
+.env
+.env.local
+.DS_Store
