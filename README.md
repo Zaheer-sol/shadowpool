@@ -67,10 +67,17 @@ Everything below has been executed end-to-end on Coston2, not just written.
 
 ### What "simulated mode" means
 
-Flare Confidential Compute was not available for deployment when this was built, so the
-matching engine currently runs as an ordinary Node.js process rather than inside a hardware
-TEE. **Everything else is identical:** the same code, the same key handling, the same
-signature scheme, the same on-chain verification path.
+The matching engine runs as an ordinary Node.js process rather than inside hardware-backed
+Confidential Space. **Everything else is identical:** the same code, the same key handling,
+the same signature scheme, the same on-chain verification path.
+
+This is the development path Flare itself documents. Their
+[FCC getting-started guide](https://dev.flare.network/fcc/guides/getting-started) states it
+"runs a local simulated TEE against the live Coston2 chain," and exposes `SIMULATED_TEE=true`
+precisely so extensions can be built without Confidential VM hardware or a GCP account.
+Registering a real TEE machine additionally requires Flare indexer database credentials,
+which are granted by contacting Flare support rather than self-served — so simulated mode is
+the intended starting point, not a shortcut.
 
 The enclave module (`services/src/enclave/`) was written to be TEE-portable from day one —
 pure deterministic logic, no filesystem access, no network calls, all I/O injected by the
@@ -477,9 +484,23 @@ limit, timing, or whether it'll even match is not actionable the way a public or
 
 Roughly ordered by value:
 
-1. **Real TEE deployment** — move `services/src/enclave/` into Flare Confidential Compute,
-   replace the ECDSA signature with a hardware attestation quote, and verify the quote in
-   `SettlementEngine.verifyAttestation`. This is the headline feature.
+1. **Register as a real Flare Compute Extension** — the headline feature, and now concretely
+   scoped. FCC is live on **Coston2** (chain ID 114), the same network we're deployed to, and
+   Flare provides two system contracts we don't yet touch:
+   - `TeeExtensionRegistry` — registers extensions and routes instructions to TEE machines
+   - `TeeMachineRegistry` — tracks attested machines and selects them randomly
+
+   The migration: package `services/src/enclave/` as a Docker image (its hash becomes the
+   authorized code version), register it via the `allow-tee-version` → `set-governance` →
+   `register-tee` flow, and change `SettlementEngine` from `ECDSA.recover` against a single
+   owner-set `teeSigner` to verification against the machine registry. Our current signing
+   scheme is already secp256k1 ECDSA, matching Flare's
+   [Private Key Extension guide](https://dev.flare.network/fcc/guides/sign-extension), so the
+   cryptography carries over — what changes is *who attests to the signer*.
+
+   **Blocker:** requires Flare indexer database credentials (contact Flare support), plus
+   Docker and an HTTPS tunnel (ngrok/cloudflared). Request the credentials early — they gate
+   everything else.
 2. **Order book recovery on restart** — replay `OrderSubmitted` events for still-Active orders
    so a node restart doesn't strand the book.
 3. **More pairs** — FBTC/USDC needs only a `PairConfig` entry plus its FTSO feed ID; the
