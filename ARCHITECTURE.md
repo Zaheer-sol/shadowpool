@@ -272,6 +272,25 @@ No contract changes are required; pairs are data, not code.
 
 ## 9. What a real TEE deployment would change
 
+> **Update:** FCC is live on Coston2 and the official path is now documented — see
+> [FCC overview](https://dev.flare.network/fcc/overview) and
+> [developer guides](https://dev.flare.network/fcc/guides). Flare's model calls these **Flare
+> Compute Extensions (FCE)**: an extension is defined by its authorized code versions (Docker
+> image hashes) plus machines that have proven via attestation that they run those versions.
+> Two system contracts mediate it — `TeeExtensionRegistry` (registers extensions, routes
+> instructions) and `TeeMachineRegistry` (tracks attested machines, random selection).
+> Registration needs Flare indexer credentials, obtained by contacting Flare support.
+>
+> Mapping our design onto theirs: our `teeSigner` + `ECDSA.recover` check is the hand-rolled
+> equivalent of their attested-machine registry. The signature scheme is the same
+> (secp256k1 ECDSA over a message digest); the difference is that we trust an owner-set
+> address whereas FCC trusts a code measurement. One architectural note if you attempt this:
+> the documented extensions are instruction-driven (an on-chain instruction is routed to a
+> machine, which returns a result), whereas our engine is a long-running service holding a
+> resting order book in memory. The Private Key Extension shows extensions *can* hold state
+> across instructions, so this is workable — but the order-book lifetime is the design question
+> to solve first.
+
 1. **Key generation** — keys generated inside the enclave, sealed to the hardware, never
    written to disk in plaintext (today: `services/.data/enclave-keys.json`).
 2. **Attestation** — settlement instructions accompanied by a hardware quote proving the code
