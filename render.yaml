@@ -16,7 +16,7 @@ services:
     runtime: node
     plan: starter # free tier sleeps after 15 min idle — see DEPLOY.md
     rootDir: services
-    buildCommand: pnpm install --frozen-lockfile
+    buildCommand: corepack enable && pnpm install --frozen-lockfile
     startCommand: pnpm start
     healthCheckPath: /api/enclave
     envVars:
@@ -45,7 +45,8 @@ services:
     runtime: node
     plan: starter
     rootDir: web
-    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+
     startCommand: pnpm start
     envVars:
       - key: NODE_VERSION
