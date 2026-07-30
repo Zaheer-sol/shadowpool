@@ -4,8 +4,8 @@
   "private": true,
   "description": "Root shim so a default-configured host (e.g. a plain Render Web Service, which ignores render.yaml and runs at the repo root) can build and run the ShadowPool node. Uses only npm — no pnpm, npx, or corepack — because hosts vary in what they provide and corepack cannot write to /usr/bin on Render. The real projects live in services/ and web/.",
   "scripts": {
-    "postinstall": "npm --prefix services install --no-audit --no-fund",
-    "build": "npm --prefix services install --no-audit --no-fund",
+    "postinstall": "cd services && rm -rf node_modules package-lock.json && npm install --no-audit --no-fund",
+    "build": "cd services && rm -rf node_modules package-lock.json && npm install --no-audit --no-fund",
     "start": "cd services && node_modules/.bin/tsx src/index.ts",
     "test": "cd services && node_modules/.bin/tsx --test src/enclave/*.test.ts"
   },
