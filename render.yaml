@@ -1,11 +1,13 @@
 # Render Blueprint — deploys both ShadowPool services.
 #
-# In Render: New → Blueprint → connect the GitHub repo → it reads this file.
-# Then set the secret env vars marked `sync: false` in the dashboard
-# (Render prompts for them; never commit secrets to the repo).
+# In Render: New → Blueprint → connect the repo → it reads this file.
+# Then fill in the env vars marked `sync: false` when prompted.
+# Full walkthrough, including how to obtain the enclave keys: DEPLOY.md
 #
-# See DEPLOY.md for the full walkthrough, including how to generate the
-# enclave keys and why they must be supplied as secrets.
+# Everything here uses plain npm on purpose. Earlier revisions used pnpm via
+# corepack, which fails on Render with `EROFS: read-only file system,
+# unlink '/usr/bin/pnpm'`. Start commands invoke the installed binaries
+# directly so no package manager is needed at runtime.
 
 services:
   # ---------------------------------------------------------------------------
@@ -14,10 +16,9 @@ services:
   - type: web
     name: shadowpool-node
     runtime: node
-    plan: starter # free tier sleeps after 15 min idle — see DEPLOY.md
+    plan: starter # free instances sleep after 15 min idle — see DEPLOY.md
     rootDir: services
-    # corepack enable fails on Render (read-only /usr/bin), so invoke pnpm via npx.
-    buildCommand: npx --yes pnpm@10.33.4 install --frozen-lockfile
+    buildCommand: npm install --no-audit --no-fund
     startCommand: node_modules/.bin/tsx src/index.ts
     healthCheckPath: /api/enclave
     envVars:
@@ -27,12 +28,13 @@ services:
         value: https://coston2-api.flare.network/ext/C/rpc
       - key: DEPLOYMENT_FILE
         value: ../contracts/deployments/114.json
-      # --- secrets: set these in the Render dashboard ---
-      # Funded Coston2 key that pays settlement gas.
+      # --- secrets: Render prompts for these ---
+      # Funded Coston2 key that pays gas for settlement transactions.
       - key: RELAY_KEY
         sync: false
-      # Enclave identity. MUST stay constant across deploys, or the on-chain
-      # teeSigner stops matching and every settlement reverts.
+      # Enclave identity. MUST stay constant across deploys: the filesystem is
+      # ephemeral, so a regenerated key would no longer match the on-chain
+      # teeSigner and every settlement would revert with InvalidAttestation.
       - key: ENCLAVE_BOX_SECRET
         sync: false
       - key: ENCLAVE_SIGNER_KEY
@@ -46,16 +48,13 @@ services:
     runtime: node
     plan: starter
     rootDir: web
-    # corepack enable fails on Render (read-only /usr/bin), so invoke pnpm via npx.
-    buildCommand: npx --yes pnpm@10.33.4 install --frozen-lockfile && npx --yes pnpm@10.33.4 build
-    # next start via the installed binary — no package manager needed at runtime.
+    buildCommand: npm install --no-audit --no-fund && npm run build
     startCommand: node_modules/.bin/next start --port $PORT
     envVars:
       - key: NODE_VERSION
         value: "22"
-      # Set to the node's public URL once it exists, e.g.
-      #   https://shadowpool-node.onrender.com
+      # Set to the node's public URL, e.g. https://shadowpool-node.onrender.com
       # NEXT_PUBLIC_* is baked in at BUILD time, so changing it requires a
-      # manual redeploy of this service — not just a restart.
+      # manual redeploy of this service — a restart will not pick it up.
       - key: NEXT_PUBLIC_API_URL
         sync: false
