@@ -2,10 +2,10 @@
   "name": "shadowpool",
   "version": "0.1.0",
   "private": true,
-  "description": "Root shim so a default-configured host (e.g. a plain Render Web Service, which ignores render.yaml and runs at the repo root) can still build and run the ShadowPool node. The real projects are services/ and web/ — prefer the render.yaml Blueprint, which targets them directly via rootDir.",
+  "description": "Root shim so a default-configured host (e.g. a plain Render Web Service, which ignores render.yaml and runs at the repo root) can build and run the ShadowPool node. Uses only npm — no pnpm, npx, or corepack — because hosts vary in what they provide and corepack cannot write to /usr/bin on Render. The real projects live in services/ and web/.",
   "scripts": {
-    "postinstall": "cd services && npx --yes pnpm@10.33.4 install --frozen-lockfile",
-    "build": "cd services && npx --yes pnpm@10.33.4 install --frozen-lockfile",
+    "postinstall": "npm --prefix services install --no-audit --no-fund",
+    "build": "npm --prefix services install --no-audit --no-fund",
     "start": "cd services && node_modules/.bin/tsx src/index.ts",
     "test": "cd services && node_modules/.bin/tsx --test src/enclave/*.test.ts"
   },
