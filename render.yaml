@@ -1,0 +1,58 @@
+# Render Blueprint — deploys both ShadowPool services.
+#
+# In Render: New → Blueprint → connect the GitHub repo → it reads this file.
+# Then set the secret env vars marked `sync: false` in the dashboard
+# (Render prompts for them; never commit secrets to the repo).
+#
+# See DEPLOY.md for the full walkthrough, including how to generate the
+# enclave keys and why they must be supplied as secrets.
+
+services:
+  # ---------------------------------------------------------------------------
+  # The off-chain node: matching enclave + chain relay + public read-only API.
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: shadowpool-node
+    runtime: node
+    plan: starter # free tier sleeps after 15 min idle — see DEPLOY.md
+    rootDir: services
+    buildCommand: pnpm install --frozen-lockfile
+    startCommand: pnpm start
+    healthCheckPath: /api/enclave
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: RPC_URL
+        value: https://coston2-api.flare.network/ext/C/rpc
+      - key: DEPLOYMENT_FILE
+        value: ../contracts/deployments/114.json
+      # --- secrets: set these in the Render dashboard ---
+      # Funded Coston2 key that pays settlement gas.
+      - key: RELAY_KEY
+        sync: false
+      # Enclave identity. MUST stay constant across deploys, or the on-chain
+      # teeSigner stops matching and every settlement reverts.
+      - key: ENCLAVE_BOX_SECRET
+        sync: false
+      - key: ENCLAVE_SIGNER_KEY
+        sync: false
+
+  # ---------------------------------------------------------------------------
+  # The Next.js frontend.
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: shadowpool-web
+    runtime: node
+    plan: starter
+    rootDir: web
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Set to the node's public URL once it exists, e.g.
+      #   https://shadowpool-node.onrender.com
+      # NEXT_PUBLIC_* is baked in at BUILD time, so changing it requires a
+      # manual redeploy of this service — not just a restart.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false

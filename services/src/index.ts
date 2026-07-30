@@ -27,12 +27,27 @@ const ANVIL_0 = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2f
 
 async function main() {
   // --- enclave keys (sealed storage stand-in) ---
-  if (!existsSync(KEYS_FILE)) {
-    mkdirSync(dirname(KEYS_FILE), { recursive: true });
-    writeFileSync(KEYS_FILE, JSON.stringify(generateKeys(), null, 2), { mode: 0o600 });
-    log(`generated new enclave keys at ${KEYS_FILE}`);
+  //
+  // Prefer env vars. Hosted platforms (Render, Railway, Fly) usually give you an
+  // ephemeral filesystem, so a file-based key would be regenerated on every
+  // deploy — the new signer would no longer match the on-chain `teeSigner` and
+  // EVERY settlement would revert with InvalidAttestation. Supplying the keys
+  // as secrets keeps the enclave identity stable across restarts.
+  let seed: { boxSecretHex: string; signerKeyHex: string };
+  if (process.env.ENCLAVE_BOX_SECRET && process.env.ENCLAVE_SIGNER_KEY) {
+    seed = {
+      boxSecretHex: process.env.ENCLAVE_BOX_SECRET,
+      signerKeyHex: process.env.ENCLAVE_SIGNER_KEY,
+    };
+    log("enclave keys loaded from environment");
+  } else {
+    if (!existsSync(KEYS_FILE)) {
+      mkdirSync(dirname(KEYS_FILE), { recursive: true });
+      writeFileSync(KEYS_FILE, JSON.stringify(generateKeys(), null, 2), { mode: 0o600 });
+      log(`generated new enclave keys at ${KEYS_FILE}`);
+    }
+    seed = JSON.parse(readFileSync(KEYS_FILE, "utf8"));
   }
-  const seed = JSON.parse(readFileSync(KEYS_FILE, "utf8"));
   const keys = keysFromSeed(seed.boxSecretHex, seed.signerKeyHex);
   log(`enclave signer: ${keys.signer.address}`);
 
@@ -72,7 +87,8 @@ async function main() {
   setInterval(() => void engine.tick().then((r) => relay.settleAll(r)), 5000);
 
   const app = createServer(keys, engine, relay, store, Math.floor(Date.now() / 1000));
-  app.listen(PORT, () => log(`api listening on http://127.0.0.1:${PORT}`));
+  // Bind 0.0.0.0 — hosted platforms route to the container's external interface.
+  app.listen(PORT, "0.0.0.0", () => log(`api listening on port ${PORT}`));
 }
 
 /** Tiny helper to read the chain id before constructing the full relay. */
