@@ -13,3 +13,6 @@ services/.data/
 .env
 .env.local
 .DS_Store
+
+# Installed agent skill packages (tooling, not project code)
+.agents/
