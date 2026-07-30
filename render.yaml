@@ -18,7 +18,10 @@ services:
     runtime: node
     plan: starter # free instances sleep after 15 min idle — see DEPLOY.md
     rootDir: services
-    buildCommand: npm install --no-audit --no-fund
+    # rm -rf node_modules first: Render restores a build cache between deploys,
+    # and a node_modules left behind by a different package manager makes npm
+    # fail with "Cannot read properties of null (reading 'matches')".
+    buildCommand: rm -rf node_modules package-lock.json && npm install --no-audit --no-fund
     startCommand: node_modules/.bin/tsx src/index.ts
     healthCheckPath: /api/enclave
     envVars:
@@ -48,7 +51,7 @@ services:
     runtime: node
     plan: starter
     rootDir: web
-    buildCommand: npm install --no-audit --no-fund && npm run build
+    buildCommand: rm -rf node_modules package-lock.json .next && npm install --no-audit --no-fund && npm run build
     startCommand: node_modules/.bin/next start --port $PORT
     envVars:
       - key: NODE_VERSION
