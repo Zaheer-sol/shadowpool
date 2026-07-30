@@ -72,31 +72,82 @@ export class ChainRelay {
     }
   }
 
-  /** Subscribe to OrderBook events and feed them into the enclave. */
-  listen(engine: MatchingEngine): void {
-    // Ethers v6 passes a ContractEventPayload as the last listener argument;
-    // read decoded args off it so the shape never bites.
-    this.orderBook.on("OrderSubmitted", async (...listenerArgs: unknown[]) => {
-      const payload = listenerArgs.at(-1) as { args: unknown[] };
-      const [orderId, trader, pairHash, depositToken, depositAmount, encryptedPayload] = payload.args;
-      this.log(`chain: OrderSubmitted ${String(orderId).slice(0, 10)}… from ${String(trader).slice(0, 8)}…`);
-      const incoming: IncomingOrder = {
-        orderId: String(orderId),
-        trader: String(trader),
-        pairHash: String(pairHash),
-        depositToken: String(depositToken),
-        depositAmount: BigInt(depositAmount as bigint),
-        encryptedPayload: String(encryptedPayload),
-      };
-      await this.settleAll(await engine.submitOrder(incoming));
-    });
+  /**
+   * Watch OrderBook events by polling block ranges with `queryFilter`.
+   *
+   * We deliberately do NOT use ethers' `contract.on()` here. That installs a
+   * server-side filter via `eth_newFilter` and polls `eth_getFilterChanges`;
+   * public RPC nodes expire those filters (and lose them on restart or
+   * load-balancer rotation), after which every poll fails with
+   * `-32000 filter not found` and the subscription is permanently dead — while
+   * the rest of the process looks perfectly healthy. We hit exactly that in
+   * testing: the node ran for 57 hours and silently stopped hearing orders.
+   *
+   * Block-range polling keeps all state client-side, survives RPC restarts, and
+   * catches up automatically after an outage.
+   */
+  listen(engine: MatchingEngine, fromBlock?: number): void {
+    const seen = new Set<string>(); // orderIds already handed to the enclave
+    let cursor = fromBlock ?? -1;
+    let polling = false;
 
-    this.orderBook.on("OrderCancelled", (...listenerArgs: unknown[]) => {
-      const payload = listenerArgs.at(-1) as { args: unknown[] };
-      const orderId = String(payload.args[0]);
-      this.log(`chain: OrderCancelled ${orderId.slice(0, 10)}…`);
-      engine.cancelOrder(orderId);
-    });
+    const poll = async () => {
+      if (polling) return; // never overlap; a slow batch must not double-process
+      polling = true;
+      try {
+        const head = await this.provider.getBlockNumber();
+        if (cursor < 0) cursor = head; // first run: start at the tip
+        if (head < cursor) return; // RPC rolled back; wait for it to catch up
+        // Cap the span so a long outage doesn't request a huge range at once.
+        const to = Math.min(head, cursor + 500);
+
+        const [submitted, cancelled] = await Promise.all([
+          this.orderBook.queryFilter(this.orderBook.filters.OrderSubmitted(), cursor, to),
+          this.orderBook.queryFilter(this.orderBook.filters.OrderCancelled(), cursor, to),
+        ]);
+
+        // Process in chain order so a cancel can never precede its submit.
+        const events = [...submitted, ...cancelled].sort(
+          (a, b) => a.blockNumber - b.blockNumber || a.index - b.index,
+        );
+
+        for (const ev of events) {
+          const args = (ev as unknown as { args: unknown[]; fragment: { name: string } }).args;
+          const name = (ev as unknown as { fragment: { name: string } }).fragment.name;
+          const orderId = String(args[0]);
+
+          if (name === "OrderSubmitted") {
+            if (seen.has(orderId)) continue; // idempotent across overlapping polls
+            seen.add(orderId);
+            const [, trader, pairHash, depositToken, depositAmount, encryptedPayload] = args;
+            this.log(`chain: OrderSubmitted ${orderId.slice(0, 10)}… from ${String(trader).slice(0, 8)}…`);
+            const incoming: IncomingOrder = {
+              orderId,
+              trader: String(trader),
+              pairHash: String(pairHash),
+              depositToken: String(depositToken),
+              depositAmount: BigInt(depositAmount as bigint),
+              encryptedPayload: String(encryptedPayload),
+            };
+            await this.settleAll(await engine.submitOrder(incoming));
+          } else {
+            this.log(`chain: OrderCancelled ${orderId.slice(0, 10)}…`);
+            engine.cancelOrder(orderId);
+          }
+        }
+
+        cursor = to + 1;
+      } catch (err) {
+        // Transient RPC failure: keep the cursor so the next tick retries the
+        // same range rather than skipping orders.
+        this.log(`event poll failed (will retry): ${(err as Error).message}`);
+      } finally {
+        polling = false;
+      }
+    };
+
+    void poll();
+    setInterval(() => void poll(), 3000);
   }
 
   /** Submit signed settlement instructions on-chain and record outcomes. */
@@ -104,7 +155,7 @@ export class ChainRelay {
     for (const { instruction: ix, attestation } of results) {
       const pairName = this.pairs.find((p) => p.pairHash === ix.pair)?.pair ?? ix.pair;
       try {
-        const tx = await this.settlement.settle(
+        const args = [
           [
             ix.matchId,
             ix.buyOrderId,
@@ -121,7 +172,22 @@ export class ChainRelay {
             ix.timestamp,
           ],
           attestation,
-        );
+        ] as const;
+
+        // `settle` reads an FTSO feed, and that read's gas cost varies by block
+        // (a feed due for update costs materially more). A bare estimateGas is
+        // therefore sometimes too low by the time the tx executes, and the
+        // settlement reverts with OutOfGas *after* passing every check. Estimate
+        // then double it — unused gas is refunded, so the only cost of the
+        // buffer is a higher upfront balance requirement.
+        let gasLimit = 1_500_000n;
+        try {
+          gasLimit = ((await this.settlement.settle.estimateGas(...args)) * 200n) / 100n;
+        } catch {
+          // Estimation itself can fail transiently; fall back to a generous cap.
+        }
+
+        const tx = await this.settlement.settle(...args, { gasLimit });
         const receipt = await tx.wait();
         this.store.recordAttempt(true);
         this.store.recordTrade({
