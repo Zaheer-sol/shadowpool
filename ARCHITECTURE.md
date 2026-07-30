@@ -188,15 +188,24 @@ always comes back. `test_OverlockedCollateralRefundedOnFill` proves it.
 
 `services/src/relay/chain.ts`. Untrusted plumbing:
 
-- **Event listener** — subscribes to `OrderSubmitted` / `OrderCancelled`, feeds the enclave.
-  Note it reads decoded args off ethers v6's `ContractEventPayload` (the last listener
-  argument) rather than positional parameters; positional destructuring broke on v6 and cost
-  a debugging session.
+- **Event listener** — polls `queryFilter` over block ranges, tracking a client-side cursor.
+  **It deliberately does not use `contract.on()`.** Ethers' subscriptions install a server-side
+  filter (`eth_newFilter` + `eth_getFilterChanges`), and public RPC nodes expire those filters;
+  once expired, every poll fails with `-32000 filter not found` and the subscription is
+  permanently dead *while the rest of the process looks healthy*. We hit this in production:
+  the node ran 57 hours, kept serving the API and FTSO prices, and silently stopped hearing
+  orders. Block-range polling survives RPC restarts and catches up after outages. A
+  `seen` set of order IDs keeps processing idempotent across overlapping polls.
 - **FTSO poller** — calls `PriceOracle.getPrice` every 2s via `staticCall` (the function is
   non-view because FtsoV2's reader is payable), keeping a 2000-point ring buffer for charts.
 - **Settlement submitter** — submits signed instructions, records success/failure for the
   settlement-success-rate metric. Uses `NonceManager`; **without it, concurrent settlements
-  collide on nonces.**
+  collide on nonces.** It also **doubles the gas estimate**: `settle` reads an FTSO feed, and
+  that read costs materially more in blocks where the feed is due for update, so a bare
+  `estimateGas` can be too low by execution time — producing an `OutOfGas` revert *after* every
+  validity check has passed. That failure is intermittent and therefore easy to misdiagnose as
+  a logic bug; the trace shows all checks succeeding and then running dry on the final event
+  emit. Unused gas is refunded, so the buffer costs nothing but headroom.
 - **Signer reconciliation** — on boot, checks the on-chain `teeSigner` matches the enclave's
   key and re-registers it if the relay key is the owner. Convenience for local development;
   in production the signer would be governance-set.

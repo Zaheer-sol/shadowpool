@@ -528,6 +528,8 @@ Roughly ordered by value:
 | Frontend shows "Enclave offline" | Node isn't running, or `NEXT_PUBLIC_API_URL` is wrong |
 | Orders submit but never match | Check the node log — likely no FTSO price yet, prices don't cross, or both orders are from the same address (self-trades are blocked) |
 | `settlement failed: PriceOutOfBand` | FTSO moved more than 2% between match and settlement; check oracle freshness |
+| Settlement reverts with **OutOfGas** after passing every check | The FTSO read inside `settle` has variable gas cost, so a bare `estimateGas` is sometimes too low. The relay now doubles the estimate — if you rewrite settlement submission, keep that buffer |
+| Node runs for hours then silently stops matching (API + prices still fine) | Was caused by ethers' `.on()` server-side RPC filters expiring (`-32000 filter not found`). Fixed by block-range `queryFilter` polling — **do not reintroduce `contract.on()`** against a public RPC |
 | Wallet shows gas as "ETH" | You're on the wrong network — the app's banner will switch you to Coston2 (gas is C2FLR) |
 | Connect button does nothing | Multiple wallet extensions — the picker lists them all via EIP-6963; pick one |
 | `nonce too low` in scripts | Wrap the signer in `NonceManager` |
