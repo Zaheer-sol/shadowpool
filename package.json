@@ -4,12 +4,12 @@
   "private": true,
   "description": "Root shim so a default-configured host (e.g. a plain Render Web Service, which ignores render.yaml and runs at the repo root) can still build and run the ShadowPool node. The real projects are services/ and web/ — prefer the render.yaml Blueprint, which targets them directly via rootDir.",
   "scripts": {
-    "postinstall": "cd services && corepack enable && pnpm install --frozen-lockfile",
-    "build": "cd services && corepack enable && pnpm install --frozen-lockfile",
-    "start": "cd services && pnpm start",
-    "test": "cd services && pnpm test"
+    "postinstall": "cd services && npx --yes pnpm@10.33.4 install --frozen-lockfile",
+    "build": "cd services && npx --yes pnpm@10.33.4 install --frozen-lockfile",
+    "start": "cd services && node_modules/.bin/tsx src/index.ts",
+    "test": "cd services && node_modules/.bin/tsx --test src/enclave/*.test.ts"
   },
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   }
 }
