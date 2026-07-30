@@ -46,6 +46,17 @@ cast send <SettlementEngine> 'setTeeSigner(address)' <new signer address> \
 
 ## Step 2 — Deploy the Blueprint
 
+> **Use Blueprint, not "Web Service".** This repo has no root `package.json` — the two apps
+> live in `services/` and `web/`. Only a Blueprint reads `render.yaml`, which is what sets
+> each service's root directory and commands. Creating a plain Web Service instead makes
+> Render run `yarn` at the repo root and fail with
+> `Couldn't find a package.json file in "/opt/render/project/src"`.
+>
+> If you already created a plain Web Service, delete it and redo it as a Blueprint — or set,
+> per service: **Root Directory** `services` (or `web`), **Build Command**
+> `corepack enable && pnpm install --frozen-lockfile` (append `&& pnpm build` for web), and
+> **Start Command** `pnpm start`.
+
 1. Render → **New** → **Blueprint** → connect the GitHub repo (`Zaheer-sol/shadowpool`).
 2. Render reads `render.yaml` and proposes two services.
 3. It prompts for the secrets marked `sync: false`:
