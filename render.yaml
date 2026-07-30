@@ -16,8 +16,9 @@ services:
     runtime: node
     plan: starter # free tier sleeps after 15 min idle — see DEPLOY.md
     rootDir: services
-    buildCommand: corepack enable && pnpm install --frozen-lockfile
-    startCommand: pnpm start
+    # corepack enable fails on Render (read-only /usr/bin), so invoke pnpm via npx.
+    buildCommand: npx --yes pnpm@10.33.4 install --frozen-lockfile
+    startCommand: node_modules/.bin/tsx src/index.ts
     healthCheckPath: /api/enclave
     envVars:
       - key: NODE_VERSION
@@ -45,9 +46,10 @@ services:
     runtime: node
     plan: starter
     rootDir: web
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
-
-    startCommand: pnpm start
+    # corepack enable fails on Render (read-only /usr/bin), so invoke pnpm via npx.
+    buildCommand: npx --yes pnpm@10.33.4 install --frozen-lockfile && npx --yes pnpm@10.33.4 build
+    # next start via the installed binary — no package manager needed at runtime.
+    startCommand: node_modules/.bin/next start --port $PORT
     envVars:
       - key: NODE_VERSION
         value: "22"
