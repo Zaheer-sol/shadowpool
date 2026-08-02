@@ -3,6 +3,8 @@
  * public key (needed to encrypt orders), aggregate stats, settled trades, and
  * FTSO price history. Order contents never pass through here.
  */
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import { hexlify } from "ethers";
@@ -65,6 +67,27 @@ export function createServer(
   app.get("/api/stats", (_req, res) => {
     res.json({ ...store.stats(), openOrders: engine.openOrderCount, series: store.series() });
   });
+
+  // Serve the statically-exported frontend from the same origin, when it has
+  // been built. This is what lets the whole product run as ONE deployment:
+  // `/api/*` above, everything else the UI. If `web/out` is absent (e.g. during
+  // local development, where Next serves itself on its own port) the API simply
+  // runs alone.
+  const webOut = fileURLToPath(new URL("../../../web/out", import.meta.url));
+  if (existsSync(webOut)) {
+    // `redirect: false`: the export contains both `trade.html` and a `trade/`
+    // directory, and the default behaviour would 301 /trade → /trade/ instead
+    // of serving the page.
+    app.use(express.static(webOut, { redirect: false }));
+    // Next's static export writes <route>.html; fall back to those for deep
+    // links like /trade so a refresh doesn't 404.
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api/")) return next();
+      const page = `${webOut}${req.path.replace(/\/$/, "")}.html`;
+      if (existsSync(page)) return res.sendFile(page);
+      return res.sendFile(`${webOut}/index.html`);
+    });
+  }
 
   return app;
 }

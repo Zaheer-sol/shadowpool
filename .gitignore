@@ -10,6 +10,8 @@ contracts/broadcast/
 # node runtime state (enclave keys, trade log, logs)
 services/.data/
 
+pnpm-lock.yaml
+
 .env
 .env.local
 .DS_Store

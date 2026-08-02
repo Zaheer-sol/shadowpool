@@ -2,7 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8787";
+/**
+ * Where the node's API lives.
+ *
+ * In production the static bundle is served by the node itself, so the API is
+ * same-origin and relative paths just work. In dev the frontend runs on its own
+ * port, so point at the node directly. An explicit NEXT_PUBLIC_API_URL always
+ * wins — set it if you host the UI separately from the node.
+ */
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:8787");
 
 export async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, { cache: "no-store" });

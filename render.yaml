@@ -1,28 +1,22 @@
-# Render Blueprint — deploys both ShadowPool services.
+# Render Blueprint — deploys ShadowPool as a SINGLE service.
 #
-# In Render: New → Blueprint → connect the repo → it reads this file.
-# Then fill in the env vars marked `sync: false` when prompted.
-# Full walkthrough, including how to obtain the enclave keys: DEPLOY.md
+# The node serves both the API (/api/*) and the statically-exported frontend
+# (everything else) from one origin, so there is no second service, no
+# cross-service URL to configure, and no CORS.
 #
-# Everything here uses plain npm on purpose. Earlier revisions used pnpm via
-# corepack, which fails on Render with `EROFS: read-only file system,
-# unlink '/usr/bin/pnpm'`. Start commands invoke the installed binaries
-# directly so no package manager is needed at runtime.
+# In Render: New → Blueprint → connect the repo → it reads this file and
+# prompts for the secrets below. Full walkthrough: DEPLOY.md
+#
+# Plain npm only — Render's image is read-only, so corepack/pnpm cannot be
+# installed, and the start command runs the installed binary directly.
 
 services:
-  # ---------------------------------------------------------------------------
-  # The off-chain node: matching enclave + chain relay + public read-only API.
-  # ---------------------------------------------------------------------------
   - type: web
-    name: shadowpool-node
+    name: shadowpool
     runtime: node
     plan: starter # free instances sleep after 15 min idle — see DEPLOY.md
-    rootDir: services
-    # rm -rf node_modules first: Render restores a build cache between deploys,
-    # and a node_modules left behind by a different package manager makes npm
-    # fail with "Cannot read properties of null (reading 'matches')".
-    buildCommand: rm -rf node_modules package-lock.json && npm install --no-audit --no-fund
-    startCommand: node_modules/.bin/tsx src/index.ts
+    buildCommand: npm install --no-audit --no-fund
+    startCommand: npm start
     healthCheckPath: /api/enclave
     envVars:
       - key: NODE_VERSION
@@ -41,23 +35,4 @@ services:
       - key: ENCLAVE_BOX_SECRET
         sync: false
       - key: ENCLAVE_SIGNER_KEY
-        sync: false
-
-  # ---------------------------------------------------------------------------
-  # The Next.js frontend.
-  # ---------------------------------------------------------------------------
-  - type: web
-    name: shadowpool-web
-    runtime: node
-    plan: starter
-    rootDir: web
-    buildCommand: rm -rf node_modules package-lock.json .next && npm install --no-audit --no-fund && npm run build
-    startCommand: node_modules/.bin/next start --port $PORT
-    envVars:
-      - key: NODE_VERSION
-        value: "22"
-      # Set to the node's public URL, e.g. https://shadowpool-node.onrender.com
-      # NEXT_PUBLIC_* is baked in at BUILD time, so changing it requires a
-      # manual redeploy of this service — a restart will not pick it up.
-      - key: NEXT_PUBLIC_API_URL
         sync: false
