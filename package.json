@@ -2,10 +2,12 @@
   "name": "shadowpool",
   "version": "0.1.0",
   "private": true,
-  "description": "Root shim so a default-configured host (e.g. a plain Render Web Service, which ignores render.yaml and runs at the repo root) can build and run the ShadowPool node. Uses only npm — no pnpm, npx, or corepack — because hosts vary in what they provide and corepack cannot write to /usr/bin on Render. The real projects live in services/ and web/.",
+  "description": "ShadowPool — an on-chain dark pool for FAssets on Flare. This root package builds and runs the whole product as ONE service: the node (matching enclave + chain relay + API) also serves the statically-exported frontend, so `npm install && npm start` at the repo root is a complete deployment. Uses only npm, since hosts vary in what package managers they provide.",
   "scripts": {
-    "postinstall": "cd services && rm -rf node_modules package-lock.json && npm install --no-audit --no-fund",
-    "build": "cd services && rm -rf node_modules package-lock.json && npm install --no-audit --no-fund",
+    "postinstall": "npm run build:node && npm run build:web",
+    "build": "npm run build:node && npm run build:web",
+    "build:node": "cd services && rm -rf node_modules package-lock.json && npm install --no-audit --no-fund",
+    "build:web": "cd web && rm -rf node_modules package-lock.json .next out && npm install --no-audit --no-fund && npm run build",
     "start": "cd services && node_modules/.bin/tsx src/index.ts",
     "test": "cd services && node_modules/.bin/tsx --test src/enclave/*.test.ts"
   },

@@ -44,7 +44,15 @@ cast send <SettlementEngine> 'setTeeSigner(address)' <new signer address> \
   --private-key $PRIVATE_KEY --rpc-url https://coston2-api.flare.network/ext/C/rpc --legacy
 ```
 
-## Step 2 — Deploy the Blueprint
+## Step 2 — Deploy (single service)
+
+ShadowPool deploys as ONE service: the node serves the API at `/api/*` and the
+statically-exported frontend at every other path, from the same origin. No second
+service, no `NEXT_PUBLIC_API_URL`, no CORS.
+
+If using a plain Web Service instead of a Blueprint, leave Root Directory blank
+(repo root), Build Command `npm install`, Start Command `npm start`.
+
 
 > **Use Blueprint, not "Web Service".** This repo has no root `package.json` — the two apps
 > live in `services/` and `web/`. Only a Blueprint reads `render.yaml`, which is what sets
