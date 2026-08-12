@@ -3,9 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useWallet } from "@/lib/wallet";
 
-const TABS = [
-  { href: "/trade", label: "Trade", icon: TradeIcon },
+const ALWAYS_TABS = [{ href: "/trade", label: "Trade", icon: TradeIcon }] as const;
+
+// Same rule as the desktop nav: these show your own funds and activity, so
+// they're pointless — and a little misleading — to a disconnected visitor.
+const GATED_TABS = [
   { href: "/vault", label: "Vault", icon: VaultIcon },
   { href: "/orders", label: "Orders", icon: OrdersIcon },
   { href: "/analytics", label: "Stats", icon: StatsIcon },
@@ -24,8 +28,10 @@ const MORE_LINKS = [
  */
 export function MobileNav() {
   const pathname = usePathname();
+  const { account } = useWallet();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreActive = MORE_LINKS.some((l) => l.href === pathname);
+  const tabs = account ? [...ALWAYS_TABS, ...GATED_TABS] : ALWAYS_TABS;
 
   return (
     <>
@@ -59,8 +65,8 @@ export function MobileNav() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Primary"
       >
-        <div className="grid grid-cols-5">
-          {TABS.map((tab) => {
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length + 1}, 1fr)` }}>
+          {tabs.map((tab) => {
             const active = pathname === tab.href;
             return (
               <Link

@@ -9,11 +9,14 @@ import { useWallet } from "@/lib/wallet";
 import type { EnclaveInfo } from "@/lib/types";
 import { ConnectButton } from "./ConnectButton";
 
+// Vault/Orders/Analytics show your own funds and activity, so there's nothing
+// there for a disconnected visitor to look at — surfacing them just invites a
+// dead click into a wallet prompt. Trade/Security/Docs stay visible always.
 const LINKS = [
   { href: "/trade", label: "Trade" },
-  { href: "/vault", label: "Vault" },
-  { href: "/orders", label: "Orders" },
-  { href: "/analytics", label: "Analytics" },
+  { href: "/vault", label: "Vault", gated: true },
+  { href: "/orders", label: "Orders", gated: true },
+  { href: "/analytics", label: "Analytics", gated: true },
   { href: "/security", label: "Security" },
   { href: "/docs", label: "Docs" },
 ];
@@ -23,6 +26,7 @@ export function Nav() {
   const { data: enclave, offline } = usePoll<EnclaveInfo>("/api/enclave", 6000);
   const { account, chainId, switchChain } = useWallet();
   const wrongNetwork = !!account && !!enclave && chainId !== null && chainId !== enclave.chainId;
+  const links = LINKS.filter((l) => !l.gated || account);
 
   // On first connect to the wrong network, immediately offer the switch —
   // the app should start on the deployment chain like any well-behaved dapp.
@@ -60,7 +64,7 @@ export function Nav() {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
