@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import { WalletProvider } from "@/lib/wallet";
 import { Nav } from "@/components/Nav";
+import { MobileNav } from "@/components/MobileNav";
 import { Footer } from "@/components/Footer";
 import "./globals.css";
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <Nav />
           <main className="flex-1">{children}</main>
           <Footer />
+          <MobileNav />
         </WalletProvider>
       </body>
     </html>

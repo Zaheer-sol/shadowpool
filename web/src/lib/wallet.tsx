@@ -78,7 +78,7 @@ const CHAIN_PARAMS: Record<number, object> = {
 };
 
 const WalletContext = createContext<WalletState | null>(null);
-const LAST_WALLET_KEY = "shadowpool.lastWallet";
+export const LAST_WALLET_KEY = "shadowpool.lastWallet";
 const LEGACY_UUID = "legacy-window-ethereum";
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {

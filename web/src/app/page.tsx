@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { usePoll } from "@/lib/api";
 import { fmtAmount, fmtPrice } from "@/lib/format";
 import { Stat } from "@/components/Stat";
+import { LAST_WALLET_KEY, useWallet } from "@/lib/wallet";
 import type { EnclaveInfo, PricesResponse, StatsResponse } from "@/lib/types";
 
 const STEPS = [
@@ -45,12 +48,33 @@ const FEATURES = [
 ];
 
 export default function Landing() {
+  const router = useRouter();
+  const { account } = useWallet();
   const { data: enclave } = usePoll<EnclaveInfo>("/api/enclave", 8000);
   const { data: prices } = usePoll<PricesResponse>("/api/prices", 5000);
   const { data: stats } = usePoll<StatsResponse>("/api/stats", 8000);
 
+  // A returning trader with a wallet already linked shouldn't have to click
+  // past the pitch every time — send them straight to the trading screen.
+  // `hasLinkedWallet` gates the loading state so first-time visitors (nothing
+  // in storage) see the landing page immediately, with no flash either way.
+  const [hasLinkedWallet] = useState(
+    () => typeof window !== "undefined" && !!localStorage.getItem(LAST_WALLET_KEY),
+  );
+  useEffect(() => {
+    if (account) router.replace("/trade");
+  }, [account, router]);
+
   const fxrp = prices?.["FXRP/USDC"]?.latest ?? null;
   const vol = stats?.volume?.["24h"]?.["FXRP/USDC"];
+
+  if (hasLinkedWallet && !account) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" aria-hidden />
+      </div>
+    );
+  }
 
   return (
     <div>
