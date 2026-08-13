@@ -36,7 +36,7 @@ export default function TradePage() {
       {/* Pair header */}
       <div className="mb-5 flex flex-wrap items-baseline gap-x-5 gap-y-2">
         <h1 className="text-xl font-semibold tracking-tight">{pair.pair}</h1>
-        <span className="num text-xl text-accent">{latest ? fmtPrice(latest) : "—"}</span>
+        <span className="num text-xl text-accent">{latest ? fmtPrice(latest) : "-"}</span>
         {change !== null && (
           <span className={`num text-[13px] ${change >= 0 ? "text-buy" : "text-sell"}`}>
             {change >= 0 ? "▲" : "▼"} {Math.abs(change).toFixed(2)}% session
@@ -49,7 +49,7 @@ export default function TradePage() {
         {/* Chart */}
         <div className="panel">
           <div className="panel-head">
-            <h2 className="text-[13px] font-medium text-ink-2">FTSO price — {pair.pair}</h2>
+            <h2 className="text-[13px] font-medium text-ink-2">FTSO price · {pair.pair}</h2>
             <span className="text-[11px] text-ink-3">updates every ~2s</span>
           </div>
           <div className="p-3">
@@ -71,7 +71,7 @@ export default function TradePage() {
       <div className="panel mt-4">
         <div className="panel-head">
           <h2 className="text-[13px] font-medium text-ink-2">Recent settlements</h2>
-          <span className="text-[11px] text-ink-3">anonymized — no addresses, no order ids</span>
+          <span className="text-[11px] text-ink-3">anonymized · no addresses, no order ids</span>
         </div>
         <div className="overflow-x-auto">
           <TradesFeed enclave={enclave} />

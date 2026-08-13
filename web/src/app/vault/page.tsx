@@ -89,7 +89,7 @@ export default function VaultPage() {
       setNote(null);
       try {
         if (enclave && !(await ensureChain(enclave.chainId))) {
-          throw new Error("Wrong network — approve the switch in your wallet, then try again.");
+          throw new Error("Wrong network. Approve the switch in your wallet, then try again.");
         }
         await fn();
         setNote({ kind: "ok", text: `${label} confirmed.` });

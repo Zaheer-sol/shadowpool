@@ -97,7 +97,7 @@ export function OrderForm({
     try {
       if (!(await ensureChain(enclave.chainId))) {
         setPhase("error");
-        setNote("Wrong network — approve the switch in your wallet, then try again.");
+        setNote("Wrong network. Approve the switch in your wallet, then try again.");
         return;
       }
       setPhase("encrypting");
@@ -194,7 +194,7 @@ export function OrderForm({
             </button>
           ))}
           <span className="num ml-auto self-center text-[12px] text-ink-3">
-            FTSO {ftsoPrice ? fmtPrice(ftsoPrice) : "—"}
+            FTSO {ftsoPrice ? fmtPrice(ftsoPrice) : "-"}
           </span>
         </div>
 
@@ -287,9 +287,9 @@ export function OrderForm({
               Locks <span className="num">{fmtAmount(collateral, collateralDecimals)}</span>{" "}
               {direction === "sell" ? base : quote} in the vault
               {orderType === "market" && direction === "buy" && " (incl. 1% price buffer)"}
-              {padPct > 0 && ` — padded +${padPct}%, so observers see only an upper bound; the unused part unlocks when the order completes`}.
+              {padPct > 0 && `, padded +${padPct}%, so observers see only an upper bound; the unused part unlocks when the order completes`}.
               {insufficient && (
-                <span className="mt-1 block text-warn">⚠ Insufficient vault balance — deposit first.</span>
+                <span className="mt-1 block text-warn">⚠ Insufficient vault balance. Deposit first.</span>
               )}
             </>
           ) : (
@@ -325,7 +325,7 @@ export function OrderForm({
         )}
 
         <p className="flex items-center gap-2 border-t border-line pt-3 text-[11px] text-ink-3">
-          <LockIcon /> Your price and terms are encrypted in your browser — on-chain there is only a
+          <LockIcon /> Your price and terms are encrypted in your browser. On-chain there is only a
           ciphertext blob plus the collateral you lock. Use padding to blur what the collateral implies.
         </p>
       </div>

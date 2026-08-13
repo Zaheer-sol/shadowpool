@@ -11,7 +11,7 @@ const serif = Instrument_Serif({ variable: "--font-instrument-serif", weight: "4
 const mono = JetBrains_Mono({ variable: "--font-jetbrains-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ShadowPool — Dark pool for FAssets on Flare",
+  title: "ShadowPool | Dark pool for FAssets on Flare",
   description:
     "Encrypted orders, TEE matching, on-chain settlement. Trade large FAsset positions without showing the market your hand.",
 };

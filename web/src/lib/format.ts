@@ -51,6 +51,6 @@ export function chainName(chainId: number | undefined): string {
     case 14: return "Flare";
     case 19: return "Songbird";
     case 31337: return "Local";
-    default: return chainId ? `Chain ${chainId}` : "—";
+    default: return chainId ? `Chain ${chainId}` : "-";
   }
 }

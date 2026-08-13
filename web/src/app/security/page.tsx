@@ -5,7 +5,7 @@ import { chainName, explorerAddr, shortAddr } from "@/lib/format";
 import type { EnclaveInfo } from "@/lib/types";
 
 const PRIVATE_PUBLIC: [string, string][] = [
-  ["Limit prices — never revealed, even after a fill", "Vault deposits and withdrawals"],
+  ["Limit prices (never revealed, even after a fill)", "Vault deposits and withdrawals"],
   ["The resting order book (who is bidding what)", "That you posted an order, and the collateral you locked"],
   ["Whether and when an order will match", "Settlement: matched pair, execution price, amounts"],
   ["Contents of orders that never match", "Total protocol volume"],
@@ -30,7 +30,7 @@ export default function SecurityPage() {
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <h1 className="font-serif text-4xl tracking-tight">How ShadowPool stays dark</h1>
       <p className="mt-3 max-w-2xl text-[14px] leading-7 text-ink-2">
-        The design goal: nobody — not node operators, not the relay, not us — can read an order
+        The design goal: nobody (not node operators, not the relay, not us) can read an order
         before it settles. Privacy comes from hardware isolation; safety comes from on-chain
         verification that doesn&apos;t trust the hardware.
       </p>
@@ -40,7 +40,7 @@ export default function SecurityPage() {
           The matching engine runs inside a Trusted Execution Environment via{" "}
           <strong>Flare Confidential Compute</strong>. A TEE is a sealed region of CPU memory: code and
           data inside are invisible to the host operating system and its operators. The enclave holds
-          two keys that never leave it — an X25519 key traders encrypt orders to, and a secp256k1 key
+          two keys that never leave it: an X25519 key traders encrypt orders to, and a secp256k1 key
           that signs settlement instructions. Remote attestation proves the enclave runs the exact
           published matching-engine binary before anyone trusts its signatures.
         </p>
@@ -68,7 +68,7 @@ export default function SecurityPage() {
           the collateral token implies direction (locking FXRP ≈ selling, USDC ≈ buying) while
           its amount bounds your size. The order form&apos;s <em>privacy padding</em> lets you
           over-lock so observers see only an upper bound. What can never be read is your price
-          and the state of the book — which is what front-running actually requires. Once a
+          and the state of the book, which is what front-running actually requires. Once a
           trade settles, the fill itself is public, exactly like post-trade prints in
           traditional dark pools.
         </p>
@@ -76,8 +76,8 @@ export default function SecurityPage() {
           <table className="w-full text-[13px]">
             <thead>
               <tr className="bg-surface-2 text-left text-[11px] uppercase tracking-[0.12em] text-ink-3">
-                <th className="px-4 py-2.5 font-medium">Private — exists only in the enclave</th>
-                <th className="px-4 py-2.5 font-medium">Public — visible on-chain</th>
+                <th className="px-4 py-2.5 font-medium">Private · exists only in the enclave</th>
+                <th className="px-4 py-2.5 font-medium">Public · visible on-chain</th>
               </tr>
             </thead>
             <tbody>
@@ -144,7 +144,7 @@ export default function SecurityPage() {
           </table>
         </div>
         <p className="mt-3 text-[12px] text-ink-3">
-          Attestation signer registered on-chain: <span className="num">{enclave ? shortAddr(enclave.signerAddress) : "—"}</span>.
+          Attestation signer registered on-chain: <span className="num">{enclave ? shortAddr(enclave.signerAddress) : "-"}</span>.
           Source code, contracts, enclave, and this UI: see the project README on GitHub.
         </p>
       </Section>

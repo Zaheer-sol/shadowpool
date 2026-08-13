@@ -67,14 +67,14 @@ export default function OrdersPage() {
       setNote("");
       try {
         if (!(await ensureChain(enclave.chainId))) {
-          throw new Error("Wrong network — approve the switch in your wallet, then try again.");
+          throw new Error("Wrong network. Approve the switch in your wallet, then try again.");
         }
         const provider = new BrowserProvider(eip1193 as never);
         const signer = await provider.getSigner();
         const book = new Contract(enclave.contracts.orderBook, ORDERBOOK_ABI, signer);
         const tx = await book.cancelOrder(orderId);
         await tx.wait();
-        setNote("Order cancelled — collateral unlocked.");
+        setNote("Order cancelled. Collateral unlocked.");
         setReload((n) => n + 1);
       } catch (err) {
         const msg = (err as Error).message ?? "failed";
@@ -97,7 +97,7 @@ export default function OrdersPage() {
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <h1 className="text-xl font-semibold tracking-tight">Orders</h1>
       <p className="mt-1 max-w-2xl text-[13px] text-ink-2">
-        Details below are decrypted from <em>your</em> browser&apos;s local storage — the chain holds only
+        Details below are decrypted from <em>your</em> browser&apos;s local storage. The chain holds only
         ciphertext. Anyone else inspecting these orders on-chain sees an opaque blob.
       </p>
 

@@ -23,7 +23,7 @@ const STEPS = [
   {
     n: "03",
     title: "Match in the dark",
-    body: "Inside the matching enclave — built for Flare Confidential Compute — orders cross against FTSO reference prices.",
+    body: "Inside the matching enclave (built for Flare Confidential Compute), orders cross against FTSO reference prices.",
   },
   {
     n: "04",
@@ -35,11 +35,11 @@ const STEPS = [
 const FEATURES = [
   {
     title: "No front-running",
-    body: "Your limit price and the resting order book never leave the enclave — nobody can trade ahead of an order they can't read.",
+    body: "Your limit price and the resting order book never leave the enclave. Nobody can trade ahead of an order they can't read.",
   },
   {
     title: "Fair matching",
-    body: "Executions reference live FTSO prices and are clamped to a 2% band on-chain — a compromised matcher still can't fill you off-market.",
+    body: "Executions reference live FTSO prices and are clamped to a 2% band on-chain. A compromised matcher still can't fill you off-market.",
   },
   {
     title: "Trustless settlement",
@@ -92,8 +92,8 @@ export default function Landing() {
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-[15px] leading-7 text-ink-2">
             On a transparent chain, a large order is a signal everyone else trades against. ShadowPool
-            matches FAsset orders inside a sealed enclave built for Flare Confidential Compute —
-            prices encrypted until the moment they settle.
+            matches FAsset orders inside a sealed enclave built for Flare Confidential Compute,
+            with prices encrypted until the moment they settle.
           </p>
           <div className="mt-9 flex items-center justify-center gap-3">
             <Link
@@ -115,7 +115,7 @@ export default function Landing() {
       {/* Live stats */}
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <div className="grid gap-3 sm:grid-cols-4">
-          <Stat label="FXRP / USDC" value={fxrp ? fmtPrice(fxrp) : "—"} sub="live FTSO price" />
+          <Stat label="FXRP / USDC" value={fxrp ? fmtPrice(fxrp) : "-"} sub="live FTSO price" />
           <Stat
             label="24h volume"
             value={vol ? `$${fmtAmount(vol, 6)}` : "$0"}
@@ -123,12 +123,12 @@ export default function Landing() {
           />
           <Stat
             label="Open orders"
-            value={enclave ? String(enclave.openOrders) : "—"}
-            sub="count only — contents are sealed"
+            value={enclave ? String(enclave.openOrders) : "-"}
+            sub="count only, contents are sealed"
           />
           <Stat
             label="Trades settled"
-            value={stats ? String(stats.tradeCount) : "—"}
+            value={stats ? String(stats.tradeCount) : "-"}
             sub="verified on-chain"
           />
         </div>

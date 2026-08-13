@@ -22,24 +22,24 @@ export default function AnalyticsPage() {
       <h1 className="text-xl font-semibold tracking-tight">Analytics</h1>
       <p className="mt-1 max-w-2xl text-[13px] text-ink-2">
         Aggregate venue metrics only. Individual orders, trader identities, and open interest by
-        account are structurally unavailable — they exist solely inside the enclave.
+        account are structurally unavailable. They exist solely inside the enclave.
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         <Stat
           label="24h volume"
-          value={stats ? `$${fmtAmount(stats.volume["24h"]["FXRP/USDC"] ?? "0", 6)}` : "—"}
+          value={stats ? `$${fmtAmount(stats.volume["24h"]["FXRP/USDC"] ?? "0", 6)}` : "-"}
           sub="FXRP/USDC, settled"
         />
-        <Stat label="Trades settled" value={stats ? String(stats.tradeCount) : "—"} sub="all time" />
+        <Stat label="Trades settled" value={stats ? String(stats.tradeCount) : "-"} sub="all time" />
         <Stat
           label="Avg trade size"
-          value={stats ? `$${fmtAmount(stats.avgQuoteSize, 6)}` : "—"}
+          value={stats ? `$${fmtAmount(stats.avgQuoteSize, 6)}` : "-"}
           sub="quote value per fill"
         />
         <Stat
           label="Settlement success"
-          value={stats ? `${(stats.settlementSuccessRate * 100).toFixed(1)}%` : "—"}
+          value={stats ? `${(stats.settlementSuccessRate * 100).toFixed(1)}%` : "-"}
           sub="TEE instructions accepted on-chain"
         />
       </div>
@@ -67,9 +67,9 @@ export default function AnalyticsPage() {
 
       <div className="panel mt-4">
         <div className="panel-head">
-          <h2 className="text-[13px] font-medium text-ink-2">FTSO reference price — FXRP/USDC</h2>
+          <h2 className="text-[13px] font-medium text-ink-2">FTSO reference price · FXRP/USDC</h2>
           <span className="num text-[12px] text-ink-3">
-            {prices?.["FXRP/USDC"]?.latest ? fmtPrice(prices["FXRP/USDC"].latest!) : "—"}
+            {prices?.["FXRP/USDC"]?.latest ? fmtPrice(prices["FXRP/USDC"].latest!) : "-"}
           </span>
         </div>
         <div className="p-3">
@@ -78,8 +78,8 @@ export default function AnalyticsPage() {
       </div>
 
       <p className="mt-4 text-[12px] text-ink-3">
-        Open orders in the enclave right now: <span className="num">{enclave?.openOrders ?? "—"}</span>{" "}
-        (count only — sizes and sides are sealed).
+        Open orders in the enclave right now: <span className="num">{enclave?.openOrders ?? "-"}</span>{" "}
+        (count only: sizes and sides are sealed).
       </p>
     </div>
   );
@@ -88,7 +88,7 @@ export default function AnalyticsPage() {
 function Empty() {
   return (
     <div className="flex h-[220px] items-center justify-center text-[13px] text-ink-3">
-      No data yet — settle some trades to populate this chart.
+      No data yet. Settle some trades to populate this chart.
     </div>
   );
 }

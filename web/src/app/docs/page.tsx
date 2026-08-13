@@ -1,11 +1,11 @@
 import Link from "next/link";
 
-export const metadata = { title: "Docs — ShadowPool" };
+export const metadata = { title: "Docs | ShadowPool" };
 
 const FAQ: { q: string; a: string }[] = [
   {
     q: "Is my order really private?",
-    a: "Your price and terms are — your browser encrypts them to the enclave's key before anything touches the chain, and they are never revealed, even after a fill. Two things are public by design: the collateral you lock at submission (its token hints at direction, its amount bounds your size — use privacy padding to blur this), and the settlement itself once a trade fills. What matters for front-running is that nobody can read your price or see the resting book, and that stays sealed.",
+    a: "Your price and terms are private: your browser encrypts them to the enclave's key before anything touches the chain, and they are never revealed, even after a fill. Two things are public by design: the collateral you lock at submission (its token hints at direction, its amount bounds your size; use privacy padding to blur this), and the settlement itself once a trade fills. What matters for front-running is that nobody can read your price or see the resting book, and that stays sealed.",
   },
   {
     q: "How does matching work?",
@@ -13,11 +13,11 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "What if the enclave goes down?",
-    a: "Funds are never inside the enclave — they sit in the ShadowVault contract. If the matching engine disappears, resting orders simply never match; you cancel them on-chain (no enclave involvement) and withdraw. Worst case is inconvenience, not loss.",
+    a: "Funds are never inside the enclave. They sit in the ShadowVault contract. If the matching engine disappears, resting orders simply never match; you cancel them on-chain (no enclave involvement) and withdraw. Worst case is inconvenience, not loss.",
   },
   {
     q: "What stops a hacked enclave from stealing funds?",
-    a: "The SettlementEngine contract independently verifies every instruction: signature, replay, order status, collateral bounds, and a 2% FTSO price band. A malicious matcher can at most match real orders at market prices — which is what it's supposed to do anyway.",
+    a: "The SettlementEngine contract independently verifies every instruction: signature, replay, order status, collateral bounds, and a 2% FTSO price band. A malicious matcher can at most match real orders at market prices, which is what it's supposed to do anyway.",
   },
   {
     q: "What fees are charged?",
@@ -74,10 +74,10 @@ export default function DocsPage() {
           The relay exposes a small read-only API used by this interface. All of it is public data.
         </p>
         <div className="num mt-3 space-y-1.5 rounded-md border border-line bg-surface-2 p-4 text-[12.5px] text-ink-2">
-          <p><span className="text-accent">GET</span> /api/enclave — status, keys, contract addresses, pairs</p>
-          <p><span className="text-accent">GET</span> /api/prices — FTSO price history per pair</p>
-          <p><span className="text-accent">GET</span> /api/trades — settled trades (anonymized)</p>
-          <p><span className="text-accent">GET</span> /api/stats — volume, counts, settlement success</p>
+          <p><span className="text-accent">GET</span> /api/enclave: status, keys, contract addresses, pairs</p>
+          <p><span className="text-accent">GET</span> /api/prices: FTSO price history per pair</p>
+          <p><span className="text-accent">GET</span> /api/trades: settled trades (anonymized)</p>
+          <p><span className="text-accent">GET</span> /api/stats: volume, counts, settlement success</p>
         </div>
         <p className="mt-6 text-[13px] text-ink-2">
           For the trust model and contract addresses, see <Link href="/security" className="text-accent hover:underline">Security</Link>.
