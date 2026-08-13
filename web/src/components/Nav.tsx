@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePoll } from "@/lib/api";
@@ -37,6 +37,16 @@ export function Nav() {
       void switchChain(enclave.chainId);
     }
   }, [wrongNetwork, enclave, switchChain]);
+
+  // The bottom tab bar is the primary mobile nav once connected. Before that
+  // there's nowhere for a phone to reach Trade/Security/Docs at all — this
+  // menu is that entry point, scoped to disconnected so it doesn't duplicate
+  // the tab bar once there's something to switch between.
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Derived, not synced via effect: once connected the panel is gated off
+  // below anyway, so folding that into `menuVisible` covers both "just
+  // connected" and "connected on a later visit" without extra state.
+  const menuVisible = menuOpen && !account;
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur">
@@ -89,8 +99,51 @@ export function Nav() {
             {enclave && <span className="text-ink-3">· {chainName(enclave.chainId)}</span>}
           </span>
           <ConnectButton />
+          {!account && (
+            <button
+              type="button"
+              aria-label="Toggle menu"
+              aria-expanded={menuVisible}
+              onClick={() => setMenuOpen((v) => !v)}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-line text-ink-2 md:hidden"
+            >
+              {menuVisible ? <CloseIcon /> : <BurgerIcon />}
+            </button>
+          )}
         </div>
       </div>
+
+      {menuVisible && (
+        <nav className="border-t border-line bg-bg px-4 pb-3 pt-1 md:hidden" aria-label="Menu">
+          {links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              onClick={() => setMenuOpen(false)}
+              className={`block rounded-md px-2 py-2.5 text-[14px] ${
+                pathname === l.href ? "text-ink" : "text-ink-2"
+              }`}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+      )}
     </header>
+  );
+}
+
+function BurgerIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+    </svg>
+  );
+}
+function CloseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+    </svg>
   );
 }

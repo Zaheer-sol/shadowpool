@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@/lib/wallet";
@@ -21,6 +21,37 @@ const MORE_LINKS = [
 ] as const;
 
 /**
+ * Hides the bar while scrolling through page content and brings it back near
+ * the top or on a scroll-up — connected traders keep it pinned always (the
+ * bar *is* the app for them), but a disconnected visitor is reading a
+ * landing page, and a bar with one real destination shouldn't sit over their
+ * content the whole way down.
+ */
+function useHideOnScroll(active: boolean) {
+  const [hidden, setHidden] = useState(false);
+  const lastY = useRef(0);
+
+  useEffect(() => {
+    if (!active) return;
+    lastY.current = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastY.current;
+      if (y < 48) setHidden(false);
+      else if (delta > 8) setHidden(true);
+      else if (delta < -8) setHidden(false);
+      lastY.current = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [active]);
+
+  // Rather than resetting `hidden` in an effect when `active` flips off,
+  // fold that into the return value — one less setState-in-effect to reason about.
+  return active && hidden;
+}
+
+/**
  * Bottom tab bar for small screens. The top `Nav` collapses its link list at
  * `md`, which used to leave phones with no way to reach any page but the one
  * they landed on — this replaces that gap rather than reusing the desktop menu,
@@ -32,10 +63,14 @@ export function MobileNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreActive = MORE_LINKS.some((l) => l.href === pathname);
   const tabs = account ? [...ALWAYS_TABS, ...GATED_TABS] : ALWAYS_TABS;
+  const scrollHidden = useHideOnScroll(!account);
+  // Derived rather than synced via effect: the panel has nothing to anchor to
+  // once the bar itself slides offscreen, so fold that into whether it's open.
+  const morePanelOpen = moreOpen && !scrollHidden;
 
   return (
     <>
-      {moreOpen && (
+      {morePanelOpen && (
         <button
           aria-label="Close menu"
           onClick={() => setMoreOpen(false)}
@@ -43,7 +78,7 @@ export function MobileNav() {
         />
       )}
 
-      {moreOpen && (
+      {morePanelOpen && (
         <div className="fixed inset-x-3 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-50 overflow-hidden rounded-xl border border-line bg-surface shadow-lg md:hidden">
           {MORE_LINKS.map((l) => (
             <Link
@@ -61,7 +96,9 @@ export function MobileNav() {
       )}
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur md:hidden"
+        className={`fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden ${
+          scrollHidden ? "translate-y-full" : "translate-y-0"
+        }`}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Primary"
       >
@@ -83,11 +120,11 @@ export function MobileNav() {
           <button
             type="button"
             onClick={() => setMoreOpen((v) => !v)}
-            aria-expanded={moreOpen}
+            aria-expanded={morePanelOpen}
             className="flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium"
           >
-            <MoreIcon active={moreOpen || moreActive} />
-            <span className={moreOpen || moreActive ? "text-accent" : "text-ink-3"}>More</span>
+            <MoreIcon active={morePanelOpen || moreActive} />
+            <span className={morePanelOpen || moreActive ? "text-accent" : "text-ink-3"}>More</span>
           </button>
         </div>
       </nav>
