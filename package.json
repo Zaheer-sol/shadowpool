@@ -13,5 +13,13 @@
   },
   "engines": {
     "node": "22.x"
+  },
+  "//": "Deps for repo-root scripts/ (e.g. demo-trade.ts). The node and web apps have their own.",
+  "dependencies": {
+    "ethers": "^6.13.0",
+    "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
   }
 }
