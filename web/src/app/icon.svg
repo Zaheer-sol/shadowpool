@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!--
+    ShadowPool mark: two overlapping circles — the visible market, and the dark
+    pool sitting in front of it. Same shape as the nav logo, but scaled and with
+    heavier strokes so it survives being drawn at 16px in a browser tab.
+    Colours are literal here (the app's CSS custom properties don't resolve in a
+    standalone icon file): bg #0a0c10, ink-3 #5f6a7d, accent #2cbfae.
+  -->
+  <rect width="32" height="32" rx="7" fill="#0a0c10"/>
+  <circle cx="12.5" cy="16" r="8" fill="none" stroke="#5f6a7d" stroke-width="2.4"/>
+  <circle cx="19.5" cy="16" r="8" fill="#0a0c10" stroke="#2cbfae" stroke-width="2.4"/>
+</svg>
