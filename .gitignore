@@ -18,3 +18,7 @@ pnpm-lock.yaml
 
 # Installed agent skill packages (tooling, not project code)
 .agents/
+
+# Demo / testing scripts (kept locally, not published)
+scripts/
+services/scripts/
