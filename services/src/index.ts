@@ -84,7 +84,11 @@ async function main() {
   await relay.refreshPrices();
   relay.listen(engine);
   setInterval(() => void relay.refreshPrices(), 2000);
-  setInterval(() => void engine.tick().then((r) => relay.settleAll(r)), 5000);
+  // Matching already runs on every order insert; this tick is the fallback that
+  // prunes expiries and re-crosses resting orders when the FTSO price moves.
+  // 2s keeps a market order that arrived before the first price tick from
+  // sitting idle for several seconds.
+  setInterval(() => void engine.tick().then((r) => relay.settleAll(r)), 2000);
 
   const app = createServer(keys, engine, relay, store, Math.floor(Date.now() / 1000));
   // Bind 0.0.0.0 — hosted platforms route to the container's external interface.

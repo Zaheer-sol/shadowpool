@@ -146,8 +146,11 @@ export class ChainRelay {
       }
     };
 
+    // 1s: this interval is the dominant source of order-to-fill latency, since
+    // an order sits unnoticed until the next poll. Coston2 blocks are ~1.8s, so
+    // polling faster than this mostly burns RPC quota without finding anything.
     void poll();
-    setInterval(() => void poll(), 3000);
+    setInterval(() => void poll(), 1000);
   }
 
   /** Submit signed settlement instructions on-chain and record outcomes. */
@@ -174,20 +177,17 @@ export class ChainRelay {
           attestation,
         ] as const;
 
-        // `settle` reads an FTSO feed, and that read's gas cost varies by block
-        // (a feed due for update costs materially more). A bare estimateGas is
-        // therefore sometimes too low by the time the tx executes, and the
-        // settlement reverts with OutOfGas *after* passing every check. Estimate
-        // then double it — unused gas is refunded, so the only cost of the
-        // buffer is a higher upfront balance requirement.
-        let gasLimit = 1_500_000n;
-        try {
-          gasLimit = ((await this.settlement.settle.estimateGas(...args)) * 200n) / 100n;
-        } catch {
-          // Estimation itself can fail transiently; fall back to a generous cap.
-        }
-
-        const tx = await this.settlement.settle(...args, { gasLimit });
+        // Fixed gas limit, deliberately not estimateGas. Two reasons:
+        //   1. Speed — estimateGas is a full RPC round trip on the critical path
+        //      of every settlement, and against a public RPC that is often
+        //      several hundred ms of pure latency.
+        //   2. Reliability — `settle` reads an FTSO feed whose gas cost varies by
+        //      block (a feed due for update costs materially more), so an
+        //      estimate taken now can be too low by the time the tx executes,
+        //      reverting with OutOfGas *after* every validity check has passed.
+        // A settle costs ~350k; 1.5M is generous headroom and unused gas is
+        // refunded, so the only cost is a higher upfront balance requirement.
+        const tx = await this.settlement.settle(...args, { gasLimit: 1_500_000n });
         const receipt = await tx.wait();
         this.store.recordAttempt(true);
         this.store.recordTrade({
