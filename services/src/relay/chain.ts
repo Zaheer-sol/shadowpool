@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { Contract, JsonRpcProvider, NonceManager, Wallet, keccak256, toUtf8Bytes } from "ethers";
 import { MatchingEngine, type IncomingOrder } from "../enclave/engine.js";
 import type { MatchResult, PairConfig } from "../enclave/types.js";
-import type { TradeStore } from "./store.js";
+import type { TradeStore, TradeRecord } from "./store.js";
 
 const abi = (name: string) =>
   JSON.parse(readFileSync(new URL(`../../abi/${name}.json`, import.meta.url), "utf8")).abi;
@@ -243,6 +243,53 @@ export class ChainRelay {
         this.store.recordAttempt(false);
         this.log(`settlement failed for ${ix.matchId.slice(0, 10)}…: ${(err as Error).message}`);
       }
+    }
+  }
+
+  /**
+   * Rebuild settlement history from `TradeSettled` events.
+   *
+   * The trade log is a JSON file on what is usually ephemeral hosting storage,
+   * so a redeploy wipes it and the analytics page resets to zero even though
+   * the settlements themselves are permanently on chain. Replaying the events
+   * makes the chain the source of truth and the file merely a cache.
+   */
+  async backfillTrades(blocks: number): Promise<void> {
+    if (blocks <= 0) return;
+    try {
+      const head = await this.provider.getBlockNumber();
+      const from = Math.max(0, head - blocks);
+      const recovered: TradeRecord[] = [];
+      // Same 30-block RPC cap as the order poller.
+      for (let start = from; start <= head; start += 25) {
+        const end = Math.min(head, start + 24);
+        let events;
+        try {
+          events = await this.settlement.queryFilter(this.settlement.filters.TradeSettled(), start, end);
+        } catch {
+          continue; // skip a bad chunk rather than abandon the whole backfill
+        }
+        for (const ev of events) {
+          const args = (ev as unknown as { args: unknown[] }).args;
+          const matchId = String(args[0]);
+          if (this.store.has(matchId)) continue;
+          const pairHash = String(args[3]);
+          const block = await ev.getBlock();
+          recovered.push({
+            matchId,
+            pair: this.pairs.find((p) => p.pairHash === pairHash)?.pair ?? pairHash,
+            executionPrice: String(args[4]),
+            baseAmount: String(args[5]),
+            quoteAmount: String(args[6]),
+            txHash: ev.transactionHash,
+            timestamp: block.timestamp,
+          });
+        }
+      }
+      const added = this.store.seed(recovered);
+      if (added > 0) this.log(`recovered ${added} past settlement(s) from chain history`);
+    } catch (err) {
+      this.log(`settlement backfill failed: ${(err as Error).message}`);
     }
   }
 

@@ -43,8 +43,34 @@ export class TradeStore {
   }
 
   recordTrade(trade: TradeRecord): void {
+    if (this.trades.some((t) => t.matchId === trade.matchId)) return;
     this.trades.push(trade);
     this.flush();
+  }
+
+  /** True if this settlement is already known (used to skip chain backfill work). */
+  has(matchId: string): boolean {
+    return this.trades.some((t) => t.matchId === matchId);
+  }
+
+  /**
+   * Merge settlements recovered from chain history, keeping the list ordered by
+   * time. Settlements are public `TradeSettled` events, so the chain — not this
+   * file — is the real source of truth; the file is only a cache that a restart
+   * on ephemeral storage would otherwise lose.
+   */
+  seed(records: TradeRecord[]): number {
+    let added = 0;
+    for (const r of records) {
+      if (this.trades.some((t) => t.matchId === r.matchId)) continue;
+      this.trades.push(r);
+      added++;
+    }
+    if (added > 0) {
+      this.trades.sort((a, b) => a.timestamp - b.timestamp);
+      this.flush();
+    }
+    return added;
   }
 
   recent(limit = 50): TradeRecord[] {

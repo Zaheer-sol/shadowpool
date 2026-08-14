@@ -81,6 +81,9 @@ async function main() {
   );
 
   await relay.ensureTeeSigner(keys.signer.address);
+  // Analytics reads a JSON cache that ephemeral hosting wipes on deploy;
+  // settlements are permanent on chain, so rebuild the history from there.
+  await relay.backfillTrades(Number(process.env.BACKFILL_BLOCKS ?? 2000));
   await relay.refreshPrices();
   // Replay recent history so a restart doesn't strand still-open orders with
   // their collateral locked and no way to ever match. ~2000 Coston2 blocks is
