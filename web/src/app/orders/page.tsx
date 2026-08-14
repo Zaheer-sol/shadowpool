@@ -89,6 +89,13 @@ export default function OrdersPage() {
   const active = rows.filter((r) => r.status === "Active");
   const past = rows.filter((r) => r.status !== "Active");
 
+  // Both sides of the same pair open under one account can never fill each
+  // other — the engine and the contract both reject self-trades. Without this
+  // the orders just sit there looking like the pool is broken.
+  const selfCrossing = active.find(
+    (a) => a.direction === "buy" && active.some((b) => b.direction === "sell" && b.pair === a.pair),
+  )?.pair;
+
   if (!enclave) {
     return <div className="mx-auto max-w-6xl px-4 py-24 text-center text-ink-3 sm:px-6">Connecting…</div>;
   }
@@ -113,6 +120,15 @@ export default function OrdersPage() {
         </div>
       ) : (
         <>
+          {selfCrossing && (
+            <div className="mt-6 rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-[13px] leading-6 text-warn">
+              You have an active buy <em>and</em> an active sell on {selfCrossing}. These will never
+              match each other: trading with yourself is blocked by both the matching engine and the
+              settlement contract, since it would be wash trading. They stay open, with collateral
+              locked, until a different trader takes the other side. Cancel one to free it.
+            </div>
+          )}
+
           <Section title={`Active (${active.length})`}>
             <OrderTable
               rows={active}

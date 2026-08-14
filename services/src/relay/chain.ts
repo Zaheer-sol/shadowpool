@@ -98,8 +98,14 @@ export class ChainRelay {
         const head = await this.provider.getBlockNumber();
         if (cursor < 0) cursor = head; // first run: start at the tip
         if (head < cursor) return; // RPC rolled back; wait for it to catch up
-        // Cap the span so a long outage doesn't request a huge range at once.
-        const to = Math.min(head, cursor + 500);
+        // Coston2's public RPC rejects eth_getLogs spanning more than 30 blocks
+        // ("requested too many blocks ... maximum is set to 30"). In steady
+        // state we're 1-2 blocks behind so it never matters, but after any pause
+        // longer than ~30 blocks every poll would fail and — because the cursor
+        // is deliberately not advanced on error — the relay would retry the same
+        // oversized range forever and never catch up. Chunk to stay under the cap;
+        // successive polls walk forward until we reach the head.
+        const to = Math.min(head, cursor + 25);
 
         const [submitted, cancelled] = await Promise.all([
           this.orderBook.queryFilter(this.orderBook.filters.OrderSubmitted(), cursor, to),
@@ -137,6 +143,10 @@ export class ChainRelay {
         }
 
         cursor = to + 1;
+        // Behind the head (catching up after a pause): poll again immediately
+        // rather than waiting for the next tick, so recovery takes seconds
+        // instead of one interval per 25-block chunk.
+        if (to < head) setTimeout(() => void poll(), 0);
       } catch (err) {
         // Transient RPC failure: keep the cursor so the next tick retries the
         // same range rather than skipping orders.
