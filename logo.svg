@@ -1,0 +1,6 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="96" fill="#0f1117"/>
+  <!-- Two offset circles: the visible market and the dark pool behind it -->
+  <circle cx="210" cy="256" r="130" fill="none" stroke="#4a5568" stroke-width="8" opacity="0.5"/>
+  <circle cx="302" cy="256" r="130" fill="#0f1117" stroke="#34d399" stroke-width="8"/>
+</svg>
