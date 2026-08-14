@@ -217,6 +217,17 @@ export function OrderForm({
             onChange={(e) => setAmount(e.target.value)}
             className="num w-full rounded-md border border-line bg-surface-2 px-3 py-2.5 text-[15px] outline-none transition-colors placeholder:text-ink-3 focus:border-accent-dim"
           />
+          {amountBase && price18 && (
+            <p className="num mt-1.5 text-[12px] text-ink-3">
+              {fmtAmount(
+                (amountBase * price18 * 10n ** BigInt(pair.quoteDecimals)) /
+                  (10n ** 18n * 10n ** BigInt(pair.baseDecimals)),
+                pair.quoteDecimals,
+              )}{" "}
+              {quote}
+              {orderType === "market" && " at FTSO price"}
+            </p>
+          )}
         </label>
 
         {/* Limit price */}
