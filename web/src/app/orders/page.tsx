@@ -86,14 +86,19 @@ export default function OrdersPage() {
     [enclave, eip1193, ensureChain],
   );
 
-  const active = rows.filter((r) => r.status === "Active");
-  const past = rows.filter((r) => r.status !== "Active");
+  // Expired orders belong here, not in history: the enclave stops matching them
+  // but the contract has no expiry concept, so their collateral stays locked
+  // until the trader cancels. Filing them under "past" hid the only control
+  // that can release it.
+  const open = rows.filter((r) => r.status === "Active" || r.status === "Expired");
+  const past = rows.filter((r) => r.status !== "Active" && r.status !== "Expired");
+  const expiredCount = open.filter((r) => r.status === "Expired").length;
 
   // Both sides of the same pair open under one account can never fill each
   // other — the engine and the contract both reject self-trades. Without this
   // the orders just sit there looking like the pool is broken.
-  const selfCrossing = active.find(
-    (a) => a.direction === "buy" && active.some((b) => b.direction === "sell" && b.pair === a.pair),
+  const selfCrossing = open.find(
+    (a) => a.direction === "buy" && open.some((b) => b.direction === "sell" && b.pair === a.pair),
   )?.pair;
 
   if (!enclave) {
@@ -120,6 +125,15 @@ export default function OrdersPage() {
         </div>
       ) : (
         <>
+          {expiredCount > 0 && (
+            <div className="mt-6 rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-[13px] leading-6 text-warn">
+              {expiredCount === 1 ? "One order has" : `${expiredCount} orders have`} passed their
+              expiry. The matching engine no longer considers them, but their collateral stays
+              locked until you release it, because expiry is part of the encrypted order and the
+              contract cannot enforce it. Hit <strong>Reclaim</strong> to get those funds back.
+            </div>
+          )}
+
           {selfCrossing && (
             <div className="mt-6 rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-[13px] leading-6 text-warn">
               You have an active buy <em>and</em> an active sell on {selfCrossing}. These will never
@@ -129,9 +143,9 @@ export default function OrdersPage() {
             </div>
           )}
 
-          <Section title={`Active (${active.length})`}>
+          <Section title={`Open (${open.length})`}>
             <OrderTable
-              rows={active}
+              rows={open}
               enclave={enclave}
               action={(r) => (
                 <button
@@ -139,7 +153,11 @@ export default function OrdersPage() {
                   onClick={() => void cancel(r.orderId)}
                   className="rounded-md border border-line px-3 py-1 text-[12px] text-ink-2 transition-colors hover:border-sell hover:text-sell disabled:opacity-40"
                 >
-                  {busy === r.orderId ? "Cancelling…" : "Cancel"}
+                  {busy === r.orderId
+                    ? "Working…"
+                    : r.status === "Expired"
+                      ? "Reclaim"
+                      : "Cancel"}
                 </button>
               )}
               empty="No active orders. Place one from the Trade page."
