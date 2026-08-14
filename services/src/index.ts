@@ -82,7 +82,10 @@ async function main() {
 
   await relay.ensureTeeSigner(keys.signer.address);
   await relay.refreshPrices();
-  relay.listen(engine);
+  // Replay recent history so a restart doesn't strand still-open orders with
+  // their collateral locked and no way to ever match. ~2000 Coston2 blocks is
+  // roughly an hour; raise BACKFILL_BLOCKS to look further back.
+  relay.listen(engine, Number(process.env.BACKFILL_BLOCKS ?? 2000));
   setInterval(() => void relay.refreshPrices(), 2000);
   // Matching already runs on every order insert; this tick is the fallback that
   // prunes expiries and re-crosses resting orders when the FTSO price moves.

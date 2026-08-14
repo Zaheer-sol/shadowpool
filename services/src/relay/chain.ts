@@ -86,17 +86,27 @@ export class ChainRelay {
    * Block-range polling keeps all state client-side, survives RPC restarts, and
    * catches up automatically after an outage.
    */
-  listen(engine: MatchingEngine, fromBlock?: number): void {
+  listen(engine: MatchingEngine, backfillBlocks = 0): void {
     const seen = new Set<string>(); // orderIds already handed to the enclave
-    let cursor = fromBlock ?? -1;
+    let cursor = -1;
     let polling = false;
+    let backfilling = backfillBlocks > 0;
 
     const poll = async () => {
       if (polling) return; // never overlap; a slow batch must not double-process
       polling = true;
       try {
         const head = await this.provider.getBlockNumber();
-        if (cursor < 0) cursor = head; // first run: start at the tip
+        if (cursor < 0) {
+          // The enclave's order book lives in memory, so a restart loses it —
+          // and starting at the tip would strand every still-open order on
+          // chain, collateral locked, unable to ever match. Rewind so those
+          // orders are replayed back into the book.
+          cursor = Math.max(0, head - backfillBlocks);
+          if (backfillBlocks > 0) {
+            this.log(`recovering open orders from the last ${backfillBlocks} blocks…`);
+          }
+        }
         if (head < cursor) return; // RPC rolled back; wait for it to catch up
         // Coston2's public RPC rejects eth_getLogs spanning more than 30 blocks
         // ("requested too many blocks ... maximum is set to 30"). In steady
@@ -125,6 +135,20 @@ export class ChainRelay {
           if (name === "OrderSubmitted") {
             if (seen.has(orderId)) continue; // idempotent across overlapping polls
             seen.add(orderId);
+
+            // While replaying history, an order may already have been filled or
+            // cancelled — only put genuinely open ones back into the book. Live
+            // orders skip this check to keep the hot path free of extra RPC.
+            if (backfilling) {
+              try {
+                const onchain = await this.orderBook.getOrder(orderId);
+                if (Number(onchain.status) !== 1 /* Active */) continue;
+                this.log(`recovered open order ${orderId.slice(0, 10)}…`);
+              } catch {
+                continue;
+              }
+            }
+
             const [, trader, pairHash, depositToken, depositAmount, encryptedPayload] = args;
             this.log(`chain: OrderSubmitted ${orderId.slice(0, 10)}… from ${String(trader).slice(0, 8)}…`);
             const incoming: IncomingOrder = {
@@ -143,10 +167,15 @@ export class ChainRelay {
         }
 
         cursor = to + 1;
-        // Behind the head (catching up after a pause): poll again immediately
-        // rather than waiting for the next tick, so recovery takes seconds
-        // instead of one interval per 25-block chunk.
-        if (to < head) setTimeout(() => void poll(), 0);
+        if (to < head) {
+          // Behind the head (backfilling, or catching up after a pause): poll
+          // again immediately rather than waiting for the next tick, so
+          // recovery takes seconds instead of one interval per 25-block chunk.
+          setTimeout(() => void poll(), 0);
+        } else if (backfilling) {
+          backfilling = false;
+          this.log(`recovery complete — ${engine.openOrderCount} open order(s) back in the book`);
+        }
       } catch (err) {
         // Transient RPC failure: keep the cursor so the next tick retries the
         // same range rather than skipping orders.
